@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { applications } from "@/db/schema";
 import { isLoggedIn } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
+import { POSTCARD_LABELS, formatPartySize } from "@/lib/field-labels";
 
 // Colours from docs/design-direction.md
 const paper = "#ffffff";
@@ -22,6 +23,26 @@ const [handFont, textFont, housePhoto] = await Promise.all([
 ]);
 const houseSrc = `data:image/jpeg;base64,${housePhoto.toString("base64")}`;
 
+// A field label above its value, like the review page.
+function Field({ label, children, size = 24 }: { label: string; children: string; size?: number }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+      <div style={{ fontSize: 17, color: inkSoft }}>{label}</div>
+      <div style={{ fontSize: size, lineHeight: 1.45 }}>{children}</div>
+    </div>
+  );
+}
+
+// An address-side line: label and value on a ruled line.
+function Line({ label, children }: { label: string; children: string }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2, borderBottom: `2px solid ${rule}`, paddingBottom: 8 }}>
+      <div style={{ fontSize: 17, color: inkSoft }}>{label}</div>
+      <div style={{ fontSize: 24 }}>{children}</div>
+    </div>
+  );
+}
+
 function truncate(text: string, max: number) {
   return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
 }
@@ -36,8 +57,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     : [];
   if (!app) return new Response("Not found", { status: 404 });
 
-  const people = app.partySize === 1 ? "1 person" : `${app.partySize} people`;
-  const line = { borderBottom: `2px solid ${rule}`, paddingBottom: 8 };
 
   return new ImageResponse(
     (
@@ -55,16 +74,18 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         >
           {/* Message side */}
           <div style={{ display: "flex", flexDirection: "column", width: 650, padding: "44px 48px", gap: 22 }}>
-            <div style={{ fontFamily: "Shantell", fontSize: 42 }}>Dear Olive Grove,</div>
-            <div style={{ fontSize: 26, lineHeight: 1.5 }}>{truncate(app.about, 420)}</div>
+            <div style={{ fontFamily: "Shantell", fontSize: 42, flexShrink: 0 }}>Dear Olive Grove,</div>
+            <Field label={POSTCARD_LABELS.about}>{truncate(app.about, 230)}</Field>
             {app.anythingElse && (
-              <div style={{ fontSize: 22, lineHeight: 1.45, color: inkSoft }}>
-                {`P.S. ${truncate(app.anythingElse, 160)}`}
-              </div>
+              <Field label={POSTCARD_LABELS.anythingElse} size={22}>
+                {truncate(app.anythingElse, 100)}
+              </Field>
             )}
-            <div style={{ display: "flex", flexDirection: "column", marginTop: "auto" }}>
+            <div style={{ display: "flex", flexDirection: "column", marginTop: "auto", flexShrink: 0 }}>
               <div style={{ fontFamily: "Shantell", fontSize: 30 }}>Love,</div>
-              <div style={{ fontFamily: "Shantell", fontSize: 46 }}>{truncate(app.name, 40)}</div>
+              <div style={{ fontFamily: "Shantell", fontSize: app.name.length > 18 ? 34 : 46 }}>
+                {truncate(app.name, 28)}
+              </div>
             </div>
           </div>
 
@@ -76,8 +97,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
               flex: 1,
               borderLeft: `2px solid ${rule}`,
               padding: "44px 44px",
-              gap: 26,
-              fontSize: 26,
+              gap: 20,
             }}
           >
             <div style={{ display: "flex", justifyContent: "flex-end", position: "relative", height: 204 }}>
@@ -127,12 +147,16 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
                 </div>
               </div>
             </div>
-            <div style={{ ...line, fontFamily: "Shantell", fontSize: 23 }}>To: The Olive Grove, London</div>
-            <div style={line}>
-              {`${formatDate(app.arrivalDate)} to ${formatDate(app.departureDate)}`}
+            <div style={{ fontFamily: "Shantell", fontSize: 23, borderBottom: `2px solid ${rule}`, paddingBottom: 8 }}>
+              To: The Olive Grove, London
             </div>
-            <div style={line}>{people}</div>
-            {app.connection && <div style={line}>{`Knows ${truncate(app.connection, 40)}`}</div>}
+            <Line label={POSTCARD_LABELS.dates}>
+              {`${formatDate(app.arrivalDate)} to ${formatDate(app.departureDate)}`}
+            </Line>
+            <Line label={POSTCARD_LABELS.partySize}>{formatPartySize(app.partySize)}</Line>
+            {app.connection && (
+              <Line label={POSTCARD_LABELS.connection}>{truncate(app.connection, 40)}</Line>
+            )}
           </div>
         </div>
       </div>

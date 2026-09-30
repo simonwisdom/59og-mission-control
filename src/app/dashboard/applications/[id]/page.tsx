@@ -8,6 +8,7 @@ import { REVIEWER_COOKIE, STATUSES } from "@/lib/review";
 import { addNote, setStatus } from "../actions";
 import { StatusBadge } from "../../status-badge";
 import { formatDate } from "@/lib/format";
+import { FIELD_LABELS } from "@/lib/field-labels";
 import { ShareButtons } from "./share-buttons";
 
 function Detail({ label, value }: { label: string; value: React.ReactNode }) {
@@ -58,9 +59,9 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
             <Detail label="Applied" value={formatDate(app.createdAt)} />
           </dl>
           <dl className="space-y-4 border-t border-line pt-4">
-            <Detail label="About them and their visit" value={app.about} />
-            <Detail label="Who they know here" value={app.connection} />
-            <Detail label="Anything we should know" value={app.anythingElse} />
+            <Detail label={FIELD_LABELS.about} value={app.about} />
+            <Detail label={FIELD_LABELS.connection} value={app.connection} />
+            <Detail label={FIELD_LABELS.anythingElse} value={app.anythingElse} />
             <Detail label="Read the onboarding doc" value={app.agreedToRules ? "Yes" : "No"} />
           </dl>
         </section>
