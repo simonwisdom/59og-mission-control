@@ -5,6 +5,9 @@ import { submitApplication, type ApplyState } from "./actions";
 
 const initialState: ApplyState = { status: "idle" };
 
+const HOUSE_RULES_URL =
+  "https://bubble-grey-7c4.notion.site/Onboarding-229e679a2bcc81dd8951cdd99a1b8ab3";
+
 export function ApplyForm() {
   const [state, action, pending] = useActionState(submitApplication, initialState);
   const [partySize, setPartySize] = useState("1");
@@ -131,7 +134,18 @@ export function ApplyForm() {
           defaultChecked={values.agreedToRules === "on"}
           className="mt-1 size-4 accent-accent"
         />
-        <span>I agree to follow the house rules.</span>
+        <span>
+          I agree to follow the{" "}
+          <a
+            href={HOUSE_RULES_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-accent underline underline-offset-2"
+          >
+            house rules
+          </a>
+          .
+        </span>
       </label>
       {errors.agreedToRules && <span className="error">{errors.agreedToRules}</span>}
 
