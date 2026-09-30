@@ -15,8 +15,6 @@ const optional = (max = 2000) =>
 const fields = z.object({
   name: required("Name is required", 200),
   email: z.string("Enter a valid email").trim().pipe(z.email("Enter a valid email")),
-  phone: optional(50),
-  pronouns: optional(50),
   arrivalDate: z.iso.date("Choose an arrival date"),
   departureDate: z.iso.date("Choose a departure date"),
   partySize: z.coerce
@@ -24,12 +22,9 @@ const fields = z.object({
     .int()
     .min(1, "At least 1 person")
     .max(20, "That's a lot of people. Contact us directly"),
-  about: required("Tell us a bit about yourself"),
-  reason: required("Tell us why you'd like to stay"),
-  connection: optional(),
-  dietaryNeeds: optional(),
-  allergies: optional(),
-  pets: optional(),
+  about: required("Tell us a bit about yourself and your visit"),
+  connection: optional(200),
+  anythingElse: optional(),
   agreedToRules: z.literal("on", "You need to agree to the house rules").transform(() => true),
 });
 

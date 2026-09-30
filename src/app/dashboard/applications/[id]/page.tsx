@@ -54,17 +54,12 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
         <section className="card space-y-4 lg:col-span-2">
           <dl className="grid gap-4 sm:grid-cols-2">
             <Detail label="Email" value={<a href={`mailto:${app.email}`} className="text-accent hover:underline">{app.email}</a>} />
-            <Detail label="Phone" value={app.phone} />
-            <Detail label="Pronouns" value={app.pronouns} />
             <Detail label="Applied" value={formatDate(app.createdAt)} />
           </dl>
           <dl className="space-y-4 border-t border-line pt-4">
-            <Detail label="About them" value={app.about} />
-            <Detail label="Why they want to stay" value={app.reason} />
-            <Detail label="Connection to the house" value={app.connection} />
-            <Detail label="Dietary needs" value={app.dietaryNeeds} />
-            <Detail label="Allergies" value={app.allergies} />
-            <Detail label="Pets" value={app.pets} />
+            <Detail label="About them and their visit" value={app.about} />
+            <Detail label="Who they know here" value={app.connection} />
+            <Detail label="Anything we should know" value={app.anythingElse} />
             <Detail label="Agreed to house rules" value={app.agreedToRules ? "Yes" : "No"} />
           </dl>
         </section>

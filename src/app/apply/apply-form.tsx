@@ -1,19 +1,20 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { submitApplication, type ApplyState } from "./actions";
 
 const initialState: ApplyState = { status: "idle" };
 
 export function ApplyForm() {
   const [state, action, pending] = useActionState(submitApplication, initialState);
+  const [partySize, setPartySize] = useState("1");
 
   if (state.status === "submitted") {
     return (
-      <div className="card text-center">
+      <div className="py-8">
         <h2 className="text-xl font-semibold">Thanks, we&apos;ve got your application!</h2>
         <p className="mt-2 text-muted">
-          The housemates will review it and get back to you by email.
+          The housemates will have a look and get back to you by email.
         </p>
       </div>
     );
@@ -21,96 +22,118 @@ export function ApplyForm() {
 
   const errors = state.status === "error" ? state.errors : {};
   const values = state.status === "error" ? state.values : {};
-
-  function field(
-    name: keyof typeof errors,
-    label: string,
-    props: React.InputHTMLAttributes<HTMLInputElement> = {},
-  ) {
-    return (
-      <label className="block">
-        <span className="label">{label}</span>
-        <input
-          name={name}
-          defaultValue={values[name]}
-          aria-invalid={!!errors[name]}
-          className="input"
-          {...props}
-        />
-        {errors[name] && <span className="error">{errors[name]}</span>}
-      </label>
-    );
-  }
-
-  function area(name: keyof typeof errors, label: string, hint?: string, required = false) {
-    return (
-      <label className="block">
-        <span className="label">{label}</span>
-        {hint && <span className="hint">{hint}</span>}
-        <textarea
-          name={name}
-          rows={3}
-          required={required}
-          defaultValue={values[name]}
-          aria-invalid={!!errors[name]}
-          className="input"
-        />
-        {errors[name] && <span className="error">{errors[name]}</span>}
-      </label>
-    );
-  }
+  const stayError = errors.arrivalDate ?? errors.departureDate ?? errors.partySize;
 
   return (
-    <form action={action} className="space-y-8" noValidate={false}>
-      <fieldset className="card space-y-4">
-        <legend className="legend">About you</legend>
-        {field("name", "Full name", { required: true, autoComplete: "name" })}
-        <div className="grid gap-4 sm:grid-cols-2">
-          {field("email", "Email", { type: "email", required: true, autoComplete: "email" })}
-          {field("phone", "Phone (optional)", { type: "tel", autoComplete: "tel" })}
-        </div>
-        {field("pronouns", "Pronouns (optional)")}
-      </fieldset>
-
-      <fieldset className="card space-y-4">
-        <legend className="legend">Your stay</legend>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {field("arrivalDate", "Arrival", { type: "date", required: true })}
-          {field("departureDate", "Departure", { type: "date", required: true })}
-          {field("partySize", "Number of people", {
-            type: "number",
-            min: 1,
-            max: 20,
-            required: true,
-            defaultValue: values.partySize ?? "1",
-          })}
-        </div>
-      </fieldset>
-
-      <fieldset className="card space-y-4">
-        <legend className="legend">Getting to know you</legend>
-        {area("about", "Tell us a bit about yourself", undefined, true)}
-        {area("reason", "Why would you like to stay?", undefined, true)}
-        {area("connection", "How do you know the house? (optional)", "e.g. a friend of a housemate")}
-      </fieldset>
-
-      <fieldset className="card space-y-4">
-        <legend className="legend">House fit</legend>
-        {area("dietaryNeeds", "Dietary needs (optional)")}
-        {area("allergies", "Allergies (optional)")}
-        {area("pets", "Bringing any pets? (optional)")}
-        <label className="flex items-start gap-3">
+    <form action={action} className="space-y-6">
+      <div className="grid gap-6 sm:grid-cols-2">
+        <label className="block">
+          <span className="label">Name</span>
           <input
-            type="checkbox"
-            name="agreedToRules"
+            name="name"
             required
-            defaultChecked={values.agreedToRules === "on"}
-            className="mt-1 size-4"
+            autoComplete="name"
+            defaultValue={values.name}
+            aria-invalid={!!errors.name}
+            className="input"
           />
-          <span>I&apos;ve read and agree to follow the house rules.</span>
+          {errors.name && <span className="error">{errors.name}</span>}
         </label>
-        {errors.agreedToRules && <span className="error">{errors.agreedToRules}</span>}
+        <label className="block">
+          <span className="label">Email</span>
+          <input
+            name="email"
+            type="email"
+            required
+            autoComplete="email"
+            defaultValue={values.email}
+            aria-invalid={!!errors.email}
+            className="input"
+          />
+          {errors.email && <span className="error">{errors.email}</span>}
+        </label>
+      </div>
+
+      <fieldset>
+        <legend className="label">Your stay</legend>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-3">
+          <span>I&apos;d like to stay from</span>
+          <input
+            name="arrivalDate"
+            type="date"
+            required
+            aria-label="Arrival date"
+            defaultValue={values.arrivalDate}
+            aria-invalid={!!errors.arrivalDate}
+            className="input-inline"
+          />
+          <span>to</span>
+          <input
+            name="departureDate"
+            type="date"
+            required
+            aria-label="Departure date"
+            defaultValue={values.departureDate}
+            aria-invalid={!!errors.departureDate}
+            className="input-inline"
+          />
+          <span>with</span>
+          <input
+            name="partySize"
+            type="number"
+            min={1}
+            max={20}
+            required
+            aria-label="Number of people"
+            value={partySize}
+            onChange={(e) => setPartySize(e.target.value)}
+            aria-invalid={!!errors.partySize}
+            className="input-inline w-16"
+          />
+          <span>{partySize === "1" ? "person" : "people"}.</span>
+        </div>
+        {stayError && <span className="error">{stayError}</span>}
       </fieldset>
+
+      <label className="block">
+        <span className="label">Tell us a bit about yourself and your visit</span>
+        <textarea
+          name="about"
+          rows={4}
+          required
+          defaultValue={values.about}
+          aria-invalid={!!errors.about}
+          className="input"
+        />
+        {errors.about && <span className="error">{errors.about}</span>}
+      </label>
+
+      <label className="block">
+        <span className="label">
+          Who do you know here? <span className="font-normal text-muted">(optional)</span>
+        </span>
+        <input name="connection" defaultValue={values.connection} className="input" />
+      </label>
+
+      <label className="block">
+        <span className="label">
+          Anything we should know? <span className="font-normal text-muted">(optional)</span>
+        </span>
+        <span className="hint">Dietary needs, allergies, pets, accessibility…</span>
+        <textarea name="anythingElse" rows={2} defaultValue={values.anythingElse} className="input" />
+      </label>
+
+      <label className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          name="agreedToRules"
+          required
+          defaultChecked={values.agreedToRules === "on"}
+          className="mt-1 size-4 accent-accent"
+        />
+        <span>I agree to follow the house rules.</span>
+      </label>
+      {errors.agreedToRules && <span className="error">{errors.agreedToRules}</span>}
 
       {/* Honeypot, hidden from people and screen readers */}
       <input
@@ -122,10 +145,7 @@ export function ApplyForm() {
         className="hidden"
       />
 
-      {state.status === "error" && (
-        <p className="error">Please fix the highlighted fields above.</p>
-      )}
-      <button type="submit" disabled={pending} className="btn-primary w-full">
+      <button type="submit" disabled={pending} className="btn-primary w-full sm:w-auto">
         {pending ? "Sending…" : "Send application"}
       </button>
     </form>

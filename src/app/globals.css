@@ -55,7 +55,10 @@ body {
     @apply mb-1 block text-xs text-muted;
   }
   .input {
-    @apply block w-full rounded-lg border border-line bg-background px-3 py-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 aria-invalid:border-danger;
+    @apply block w-full rounded-lg border border-line bg-surface px-3 py-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 aria-invalid:border-danger;
+  }
+  .input-inline {
+    @apply rounded-lg border border-line bg-surface px-2 py-1.5 outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 aria-invalid:border-danger;
   }
   .error {
     @apply mt-1 block text-sm text-danger;

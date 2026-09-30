@@ -5,17 +5,12 @@ CREATE TABLE "applications" (
 	"status" "application_status" DEFAULT 'pending' NOT NULL,
 	"name" text NOT NULL,
 	"email" text NOT NULL,
-	"phone" text,
-	"pronouns" text,
 	"arrival_date" date NOT NULL,
 	"departure_date" date NOT NULL,
 	"party_size" integer NOT NULL,
 	"about" text NOT NULL,
-	"reason" text NOT NULL,
 	"connection" text,
-	"dietary_needs" text,
-	"allergies" text,
-	"pets" text,
+	"anything_else" text,
 	"agreed_to_rules" boolean NOT NULL
 );
 --> statement-breakpoint

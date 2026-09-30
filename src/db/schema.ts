@@ -22,20 +22,15 @@ export const applications = pgTable("applications", {
 
   name: text("name").notNull(),
   email: text("email").notNull(),
-  phone: text("phone"),
-  pronouns: text("pronouns"),
 
   arrivalDate: date("arrival_date").notNull(),
   departureDate: date("departure_date").notNull(),
   partySize: integer("party_size").notNull(),
 
   about: text("about").notNull(),
-  reason: text("reason").notNull(),
   connection: text("connection"),
-
-  dietaryNeeds: text("dietary_needs"),
-  allergies: text("allergies"),
-  pets: text("pets"),
+  // Dietary needs, allergies, pets, accessibility, etc.
+  anythingElse: text("anything_else"),
   agreedToRules: boolean("agreed_to_rules").notNull(),
 });
 

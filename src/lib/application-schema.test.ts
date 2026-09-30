@@ -5,17 +5,12 @@ function formData(overrides: Record<string, string | null> = {}) {
   const base: Record<string, string> = {
     name: "Ada Lovelace",
     email: "ada@example.com",
-    phone: "",
-    pronouns: "she/her",
     arrivalDate: "2026-10-10",
     departureDate: "2026-10-14",
     partySize: "1",
-    about: "Mathematician, loves cooking.",
-    reason: "Visiting friends in town.",
+    about: "Mathematician, visiting friends in town.",
     connection: "",
-    dietaryNeeds: "",
-    allergies: "",
-    pets: "",
+    anythingElse: "",
     agreedToRules: "on",
   };
   const fd = new FormData();
@@ -33,7 +28,7 @@ describe("parseApplication", () => {
 
   it("stores blank optional fields as null", () => {
     const result = parseApplication(formData());
-    expect(result.success && result.data.phone).toBeNull();
+    expect(result.success && result.data.anythingElse).toBeNull();
   });
 
   it("converts party size to a number", () => {
@@ -42,18 +37,25 @@ describe("parseApplication", () => {
   });
 
   it("accepts optional fields being left out entirely", () => {
-    const result = parseApplication(formData({ phone: null, pronouns: null, pets: null }));
+    const result = parseApplication(formData({ connection: null, anythingElse: null }));
     expect(result.success).toBe(true);
   });
 
   it("gives a readable error when a required field is missing", () => {
     const result = parseApplication(formData({ about: null }));
-    expect(!result.success && result.errors.about).toBe("Tell us a bit about yourself");
+    expect(!result.success && result.errors.about).toBe("Tell us a bit about yourself and your visit");
   });
 
   it("flags bad dates even when other fields are invalid too", () => {
     const result = parseApplication(formData({ agreedToRules: null, departureDate: "2026-10-01" }));
     expect(!result.success && result.errors.departureDate).toBeDefined();
+  });
+
+  it("ignores fields that are no longer on the form", () => {
+    const fd = formData();
+    fd.set("phone", "07700 900000");
+    const result = parseApplication(fd);
+    expect(result.success && "phone" in result.data).toBe(false);
   });
 
   it("requires a name", () => {

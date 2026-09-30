@@ -1,5 +1,5 @@
 {
-  "id": "6657e0d8-74ea-4b51-8753-777f8960b639",
+  "id": "6c7c122f-7d2e-4805-ae09-1800dc042959",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -41,18 +41,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "phone": {
-          "name": "phone",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pronouns": {
-          "name": "pronouns",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "arrival_date": {
           "name": "arrival_date",
           "type": "date",
@@ -77,32 +65,14 @@
           "primaryKey": false,
           "notNull": true
         },
-        "reason": {
-          "name": "reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
         "connection": {
           "name": "connection",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "dietary_needs": {
-          "name": "dietary_needs",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "allergies": {
-          "name": "allergies",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pets": {
-          "name": "pets",
+        "anything_else": {
+          "name": "anything_else",
           "type": "text",
           "primaryKey": false,
           "notNull": false
