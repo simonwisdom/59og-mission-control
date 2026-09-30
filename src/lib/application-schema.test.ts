@@ -9,6 +9,7 @@ function formData(overrides: Record<string, string | null> = {}) {
     departureDate: "2026-10-14",
     partySize: "1",
     about: "Mathematician, visiting friends in town.",
+    offering: "Happy to cook a Sunday roast.",
     connection: "",
     anythingElse: "",
     agreedToRules: "on",
@@ -56,6 +57,11 @@ describe("parseApplication", () => {
     fd.set("phone", "07700 900000");
     const result = parseApplication(fd);
     expect(result.success && "phone" in result.data).toBe(false);
+  });
+
+  it("asks what they'd like to offer", () => {
+    const result = parseApplication(formData({ offering: " " }));
+    expect(!result.success && result.errors.offering).toBe("Tell us what you'd like to offer");
   });
 
   it("requires a name", () => {

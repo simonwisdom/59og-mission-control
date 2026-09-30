@@ -29,6 +29,9 @@ export const applications = pgTable("applications", {
 
   about: text("about").notNull(),
   connection: text("connection"),
+  // What they'd like to contribute while staying, e.g. cooking a dinner. Nullable
+  // because applications from before this question was asked don't have it.
+  offering: text("offering"),
   // Dietary needs, allergies, pets, accessibility, etc.
   anythingElse: text("anything_else"),
   agreedToRules: boolean("agreed_to_rules").notNull(),

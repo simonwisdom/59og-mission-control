@@ -4,6 +4,7 @@ export const FIELD_LABELS = {
   dates: "Dates",
   partySize: "Group size",
   about: "About them and their visit",
+  offering: "What they'd like to offer",
   connection: "Who they know here",
   anythingElse: "Anything we should know",
 } as const;
@@ -17,6 +18,7 @@ export const POSTCARD_LABELS = {
   dates: "I'd like to stay",
   partySize: "How many of us",
   about: "About me and my visit",
+  offering: "What I'd like to offer",
   connection: "Who I know there",
   anythingElse: "Anything you should know",
 } as const;

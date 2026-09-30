@@ -73,6 +73,7 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
           </dl>
           <dl className="space-y-4 border-t border-line pt-4">
             <Detail label={FIELD_LABELS.about} value={app.about} />
+            <Detail label={FIELD_LABELS.offering} value={app.offering} />
             <Detail label={FIELD_LABELS.connection} value={app.connection} />
             <Detail label={FIELD_LABELS.anythingElse} value={app.anythingElse} />
             <Detail label="Read the onboarding doc" value={app.agreedToRules ? "Yes" : "No"} />

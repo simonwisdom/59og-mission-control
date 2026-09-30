@@ -23,6 +23,7 @@ const fields = z.object({
     .min(1, "At least 1 person")
     .max(20, "That's a lot of people. Contact us directly"),
   about: required("Tell us a bit about yourself and your visit"),
+  offering: required("Tell us what you'd like to offer", 2000),
   connection: optional(200),
   anythingElse: optional(),
   agreedToRules: z.literal("on", "Please read the onboarding doc first").transform(() => true),

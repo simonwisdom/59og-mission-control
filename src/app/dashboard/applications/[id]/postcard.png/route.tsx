@@ -75,10 +75,15 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
           {/* Message side */}
           <div style={{ display: "flex", flexDirection: "column", width: 650, padding: "44px 48px", gap: 22 }}>
             <div style={{ fontFamily: "Shantell", fontSize: 42, flexShrink: 0 }}>Dear Olive Grove,</div>
-            <Field label={POSTCARD_LABELS.about}>{truncate(app.about, 230)}</Field>
+            <Field label={POSTCARD_LABELS.about}>{truncate(app.about, 180)}</Field>
+            {app.offering && (
+              <Field label={POSTCARD_LABELS.offering} size={22}>
+                {truncate(app.offering, 90)}
+              </Field>
+            )}
             {app.anythingElse && (
               <Field label={POSTCARD_LABELS.anythingElse} size={22}>
-                {truncate(app.anythingElse, 100)}
+                {truncate(app.anythingElse, 70)}
               </Field>
             )}
             <div style={{ display: "flex", flexDirection: "column", marginTop: "auto", flexShrink: 0 }}>

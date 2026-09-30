@@ -7,7 +7,7 @@ import { formatForWhatsApp } from "@/lib/share-text";
 type Props = {
   app: Pick<
     Application,
-    "id" | "name" | "arrivalDate" | "departureDate" | "partySize" | "about" | "connection" | "anythingElse"
+    "id" | "name" | "arrivalDate" | "departureDate" | "partySize" | "about" | "offering" | "connection" | "anythingElse"
   >;
 };
 

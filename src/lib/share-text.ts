@@ -4,7 +4,7 @@ import { formatDate } from "./format";
 
 type Shareable = Pick<
   Application,
-  "name" | "arrivalDate" | "departureDate" | "partySize" | "about" | "connection" | "anythingElse"
+  "name" | "arrivalDate" | "departureDate" | "partySize" | "about" | "offering" | "connection" | "anythingElse"
 >;
 
 function quote(text: string) {
@@ -26,6 +26,7 @@ export function formatForWhatsApp(app: Shareable, url: string) {
     "",
     `*${FIELD_LABELS.about}*`,
     quote(app.about),
+    app.offering && `\n*${FIELD_LABELS.offering}*\n${quote(app.offering)}`,
     app.anythingElse && `\n*${FIELD_LABELS.anythingElse}*\n${quote(app.anythingElse)}`,
     "",
     `Notes and votes: ${url}`,

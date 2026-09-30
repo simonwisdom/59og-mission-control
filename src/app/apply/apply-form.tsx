@@ -66,6 +66,21 @@ export function ApplyForm() {
 
           <label className="block">
             <span className="hint">
+              What would you like to offer the community? Cooking a dinner, teaching a skill…
+            </span>
+            <textarea
+              name="offering"
+              rows={2}
+              required
+              defaultValue={values.offering}
+              aria-invalid={!!errors.offering}
+              className="ruled"
+            />
+            {errors.offering && <span className="error">{errors.offering}</span>}
+          </label>
+
+          <label className="block">
+            <span className="hint">
               P.S. Anything we should know? Dietary needs, allergies, pets, accessibility…
               (optional)
             </span>

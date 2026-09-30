@@ -8,6 +8,7 @@ const app = {
   departureDate: "2026-10-11",
   partySize: 1,
   about: "I'm testing this, woohoo!",
+  offering: "Pasta night",
   connection: "Erybody",
   anythingElse: "Allergic to loneliness",
   status: "pending" as const,
@@ -38,6 +39,14 @@ describe("formatForWhatsApp", () => {
   it("quotes every line of the message", () => {
     const text = formatForWhatsApp({ ...app, about: "Line one\nLine two" }, url);
     expect(text).toContain("> Line one\n> Line two");
+  });
+
+  it("labels and quotes what they'd like to offer", () => {
+    expect(formatForWhatsApp(app, url)).toContain("*What they'd like to offer*\n> Pasta night");
+  });
+
+  it("leaves out the offer on applications from before it was asked", () => {
+    expect(formatForWhatsApp({ ...app, offering: null }, url)).not.toContain("offer");
   });
 
   it("labels who they know", () => {

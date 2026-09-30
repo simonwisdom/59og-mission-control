@@ -8,6 +8,13 @@
       "when": 1790787828509,
       "tag": "0000_big_lady_deathstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790792374636,
+      "tag": "0001_add_offering",
+      "breakpoints": true
     }
   ]
 }
