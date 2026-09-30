@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "node --env-file-if-exists=.env scripts/migrate.mjs && next start",
     "lint": "eslint",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",

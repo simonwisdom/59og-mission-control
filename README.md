@@ -32,7 +32,7 @@ openssl rand -base64 48     # SESSION_SECRET
 | `npm test`            | Unit tests (vitest)                              |
 | `npm run lint`        | ESLint                                           |
 | `npm run db:generate` | Create a migration after editing `src/db/schema.ts` |
-| `npm run db:migrate`  | Apply migrations                                 |
+| `npm run db:migrate`  | Apply migrations (also runs on `npm start`)      |
 
 ## Deploying to Railway
 
@@ -44,7 +44,7 @@ openssl rand -base64 48     # SESSION_SECRET
    - `SESSION_SECRET`: 32+ random characters
 4. Generate a public domain under the service's Networking settings.
 
-`railway.json` runs migrations as the pre-deploy command, so schema changes apply automatically.
+`npm start` applies any pending migrations before starting the server, so schema changes apply automatically on deploy.
 
 ## Security notes
 
