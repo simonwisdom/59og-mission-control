@@ -8,7 +8,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <div className="min-h-screen">
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <Link href="/dashboard" className="font-semibold">
+          <Link href="/dashboard" className="hand text-lg">
             The Olive Grove
           </Link>
           <form action={logout}>

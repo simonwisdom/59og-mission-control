@@ -7,7 +7,8 @@ import { applications, notes } from "@/db/schema";
 import { REVIEWER_COOKIE, STATUSES } from "@/lib/review";
 import { addNote, setStatus } from "../actions";
 import { StatusBadge } from "../../status-badge";
-import { formatDate } from "../../format";
+import { formatDate } from "@/lib/format";
+import { ShareButtons } from "./share-buttons";
 
 function Detail({ label, value }: { label: string; value: React.ReactNode }) {
   if (value === null || value === undefined || value === "") return null;
@@ -41,7 +42,7 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
 
       <div className="mt-4 mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">{app.name}</h1>
+          <h1 className="hand text-2xl">{app.name}</h1>
           <p className="text-muted">
             {formatDate(app.arrivalDate)} to {formatDate(app.departureDate)} ·{" "}
             {app.partySize} {app.partySize === 1 ? "person" : "people"}
@@ -65,6 +66,11 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
         </section>
 
         <aside className="space-y-6">
+          <section className="card">
+            <h2 className="legend mb-3">Share with the house</h2>
+            <ShareButtons app={app} />
+          </section>
+
           <section className="card">
             <h2 className="legend mb-3">Decision</h2>
             <form action={setStatus.bind(null, app.id)} className="flex flex-wrap gap-2">

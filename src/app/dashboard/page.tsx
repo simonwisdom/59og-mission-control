@@ -11,10 +11,10 @@ export default async function DashboardHome() {
 
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold">House services</h1>
+      <h1 className="hand mb-6 text-2xl">House services</h1>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Link href="/dashboard/applications" className="card block hover:border-accent">
-          <h2 className="font-semibold">Guest applications</h2>
+          <h2 className="hand text-lg">Guest applications</h2>
           <p className="mt-1 text-sm text-muted">
             {pending === 0 ? "Nothing waiting for review" : `${pending} waiting for review`}
           </p>

@@ -5,13 +5,18 @@ export const metadata: Metadata = { title: "Apply to stay" };
 
 export default function ApplyPage() {
   return (
-    <main className="mx-auto max-w-xl px-4 py-12 sm:py-16">
-      <h1 className="text-3xl font-semibold">Come and stay at The Olive Grove</h1>
-      <p className="mt-2 mb-10 text-muted">
-        We love having guests. This takes about 2 minutes, and the housemates will get back
-        to you by email.
-      </p>
+    <div className="mx-auto max-w-4xl px-5 pt-10 pb-20 lg:pt-16">
+      <header className="mb-10 max-w-2xl">
+        <h1 className="hand text-4xl leading-tight sm:text-5xl">
+          Come and stay at The Olive Grove
+        </h1>
+        <p className="mt-3 text-ink-soft">
+          We love having guests. Send us a postcard (it takes about 2 minutes) and one of us
+          will write back by email.
+        </p>
+      </header>
+
       <ApplyForm />
-    </main>
+    </div>
   );
 }

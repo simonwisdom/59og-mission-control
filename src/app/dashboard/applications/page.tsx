@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { applications } from "@/db/schema";
 import { STATUSES, isStatus } from "@/lib/review";
 import { StatusBadge } from "../status-badge";
-import { formatDate } from "../format";
+import { formatDate } from "@/lib/format";
 
 export default async function ApplicationsPage({
   searchParams,
@@ -25,7 +25,7 @@ export default async function ApplicationsPage({
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Guest applications</h1>
+        <h1 className="hand text-2xl">Guest applications</h1>
         <Link href="/apply" className="text-sm text-accent hover:underline" target="_blank">
           Open public form ↗
         </Link>
@@ -36,7 +36,7 @@ export default async function ApplicationsPage({
           <Link
             key={tab.label}
             href={tab.value ? `?status=${tab.value}` : "?"}
-            className={`rounded-full px-3 py-1 text-sm capitalize ${
+            className={`rounded-[2px] px-3 py-1 text-sm capitalize ${
               tab.value === status ? "bg-foreground text-background" : "border border-line"
             }`}
           >
@@ -48,7 +48,7 @@ export default async function ApplicationsPage({
       {rows.length === 0 ? (
         <p className="card text-muted">No applications here yet.</p>
       ) : (
-        <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+        <ul className="divide-y divide-line overflow-hidden rounded-[2px] border border-line bg-surface">
           {rows.map((app) => (
             <li key={app.id}>
               <Link

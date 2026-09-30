@@ -1,10 +1,19 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Literata, Shantell_Sans } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Bookish text face, like a well-thumbed paperback (see docs/design-direction.md).
+const literata = Literata({
+  variable: "--font-literata",
   subsets: ["latin"],
+});
+
+// Hand lettering for headings and annotations; its informality/bounce axes let the
+// same face read as a tidy heading or a scrawled fridge note.
+const shantell = Shantell_Sans({
+  variable: "--font-shantell",
+  subsets: ["latin"],
+  axes: ["INFM", "BNCE"],
 });
 
 export const metadata: Metadata = {
@@ -15,8 +24,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${geistSans.variable} h-full antialiased`}>
-      <body className="min-h-full font-sans">{children}</body>
+    <html lang="en" className={`${literata.variable} ${shantell.variable} h-full antialiased`}>
+      <body className="min-h-full font-serif">{children}</body>
     </html>
   );
 }

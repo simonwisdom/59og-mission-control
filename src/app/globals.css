@@ -1,72 +1,117 @@
 @import "tailwindcss";
 
+/* Palette and shapes come from docs/design-direction.md */
 :root {
-  --background: #f7f5f0;
-  --surface: #ffffff;
-  --foreground: #1f1d1a;
-  --muted: #6b665e;
-  --line: #e4e0d8;
-  --accent: #2f6f5e;
-  --accent-fg: #ffffff;
-  --danger: #b4233c;
+  --paper: #ffffff;
+  --ink: #1d3326;
+  --ink-soft: #55685c;
+  --rule: #d9d3c7;
+  --brick: #a8652f;
+  --lamp: #e8872b;
+  --danger: #b3261e;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #161513;
-    --surface: #1f1e1b;
-    --foreground: #eeebe5;
-    --muted: #a39e94;
-    --line: #34322e;
-    --accent: #6cbfa6;
-    --accent-fg: #10231d;
-    --danger: #f2849a;
+    --paper: #142019;
+    --ink: #e9ede6;
+    --ink-soft: #a5b3a9;
+    --rule: #33443a;
+    --brick: #d99a62;
+    --lamp: #f0a052;
+    --danger: #f2998f;
   }
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-surface: var(--surface);
-  --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
-  --color-line: var(--line);
-  --color-accent: var(--accent);
-  --color-accent-fg: var(--accent-fg);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-rule: var(--rule);
+  --color-brick: var(--brick);
+  --color-lamp: var(--lamp);
   --color-danger: var(--danger);
-  --font-sans: var(--font-geist-sans);
+
+  /* Older names still used by the dashboard */
+  --color-background: var(--paper);
+  --color-surface: var(--paper);
+  --color-foreground: var(--ink);
+  --color-muted: var(--ink-soft);
+  --color-line: var(--rule);
+  --color-accent: var(--ink);
+  --color-accent-fg: var(--paper);
+
+  --font-serif: var(--font-literata), Georgia, serif;
+  --font-hand: var(--font-shantell), "Comic Sans MS", cursive;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--paper);
+  color: var(--ink);
 }
 
 @layer components {
+  .hand {
+    @apply font-hand;
+    font-variation-settings: "INFM" 30, "BNCE" 0;
+  }
+  /* Scrawled margin-note version of the hand lettering */
+  .scrawl {
+    @apply font-hand text-brick;
+    font-variation-settings: "INFM" 100, "BNCE" 40;
+  }
   .card {
-    @apply rounded-xl border border-line bg-surface p-5;
+    @apply rounded-[2px] border border-rule bg-paper p-5;
   }
   .legend {
-    @apply text-sm font-semibold tracking-wide text-muted uppercase;
+    @apply font-hand text-lg;
+    font-variation-settings: "INFM" 30, "BNCE" 0;
   }
   .label {
-    @apply mb-1 block text-sm font-medium;
+    @apply mb-1 block font-medium;
   }
   .hint {
-    @apply mb-1 block text-xs text-muted;
+    @apply mb-1 block text-sm text-ink-soft;
   }
+  /* Inputs are written on a single ruled line */
   .input {
-    @apply block w-full rounded-lg border border-line bg-surface px-3 py-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 aria-invalid:border-danger;
+    @apply block w-full rounded-none border-0 border-b-[1.5px] border-rule bg-transparent px-0.5 py-1.5 outline-none focus:border-lamp aria-invalid:border-danger;
   }
   .input-inline {
-    @apply rounded-lg border border-line bg-surface px-2 py-1.5 outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 aria-invalid:border-danger;
+    @apply rounded-none border-0 border-b-[1.5px] border-rule bg-transparent px-1 py-0.5 text-center outline-none focus:border-lamp aria-invalid:border-danger;
+  }
+  /* Textareas are ruled notebook paper, lines on a 2rem rhythm */
+  .ruled {
+    @apply block w-full resize-y rounded-none border-0 bg-transparent px-0.5 outline-none;
+    line-height: 2rem;
+    background-image: linear-gradient(to bottom, transparent calc(2rem - 1.5px), var(--rule) calc(2rem - 1.5px));
+    background-size: 100% 2rem;
+    background-attachment: local;
+  }
+  .ruled:focus {
+    background-image: linear-gradient(to bottom, transparent calc(2rem - 1.5px), var(--lamp) calc(2rem - 1.5px));
+  }
+  .ruled[aria-invalid="true"] {
+    background-image: linear-gradient(to bottom, transparent calc(2rem - 1.5px), var(--danger) calc(2rem - 1.5px));
+  }
+  /* The postcard itself: white card stock with a hard, flat edge shadow */
+  .postcard {
+    @apply border border-rule bg-paper shadow-[5px_5px_0_var(--rule)];
+  }
+  /* Perforated stamp edge: solid centre, half-holes punched along the border.
+     Stamp sides must be multiples of 8px so the holes line up at the corners. */
+  .stamp {
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      radial-gradient(circle at center, #0000 2.6px, #000 3px) -4px -4px / 8px 8px padding-box;
   }
   .error {
     @apply mt-1 block text-sm text-danger;
   }
   .btn-primary {
-    @apply inline-block rounded-lg bg-accent px-4 py-2 font-medium text-accent-fg hover:opacity-90 disabled:opacity-50;
+    @apply inline-block rounded-[2px] bg-ink px-5 py-2.5 font-medium text-paper hover:bg-ink/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lamp disabled:opacity-50;
   }
   .btn-secondary {
-    @apply rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-background disabled:cursor-default disabled:opacity-40;
+    @apply rounded-[2px] border border-rule px-3 py-1.5 text-sm hover:border-ink disabled:cursor-default disabled:opacity-40;
   }
 }

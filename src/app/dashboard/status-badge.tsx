@@ -8,7 +8,7 @@ const styles: Record<ApplicationStatus, string> = {
 
 export function StatusBadge({ status }: { status: ApplicationStatus }) {
   return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${styles[status]}`}>
+    <span className={`rounded-[2px] px-2 py-0.5 text-xs font-medium capitalize ${styles[status]}`}>
       {status}
     </span>
   );
