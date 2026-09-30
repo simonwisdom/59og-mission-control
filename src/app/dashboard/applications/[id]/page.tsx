@@ -8,7 +8,7 @@ import { REVIEWER_COOKIE, STATUSES } from "@/lib/review";
 import { addNote, setStatus } from "../actions";
 import { StatusBadge } from "../../status-badge";
 import { formatDate } from "@/lib/format";
-import { FIELD_LABELS } from "@/lib/field-labels";
+import { FIELD_LABELS, formatPartySize } from "@/lib/field-labels";
 import { ShareButtons } from "./share-buttons";
 
 function Detail({ label, value }: { label: string; value: React.ReactNode }) {
@@ -35,25 +35,38 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
     .orderBy(asc(notes.createdAt));
   const reviewerName = (await cookies()).get(REVIEWER_COOKIE)?.value ?? "";
 
+  const decisionLabels = { pending: "Back to pending", approved: "Approve", declined: "Decline" };
+
   return (
     <>
       <Link href="/dashboard/applications" className="text-sm text-muted hover:underline">
         ← All applications
       </Link>
 
-      <div className="mt-4 mb-6 flex flex-wrap items-center justify-between gap-4">
+      <div className="mt-3 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div>
           <h1 className="hand text-2xl">{app.name}</h1>
           <p className="text-muted">
             {formatDate(app.arrivalDate)} to {formatDate(app.departureDate)} ·{" "}
-            {app.partySize} {app.partySize === 1 ? "person" : "people"}
+            {formatPartySize(app.partySize)}
           </p>
         </div>
-        <StatusBadge status={app.status} />
+        <form action={setStatus.bind(null, app.id)} className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={app.status} />
+          {STATUSES.filter((status) => status !== app.status).map((status) => (
+            <button key={status} type="submit" name="status" value={status} className="btn-secondary">
+              {decisionLabels[status]}
+            </button>
+          ))}
+        </form>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <section className="card space-y-4 lg:col-span-2">
+      <div className="mt-4 mb-6 border-y border-line py-3">
+        <ShareButtons app={app} />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-5">
+        <section className="card space-y-4 lg:col-span-3">
           <dl className="grid gap-4 sm:grid-cols-2">
             <Detail label="Email" value={<a href={`mailto:${app.email}`} className="text-accent hover:underline">{app.email}</a>} />
             <Detail label="Applied" value={formatDate(app.createdAt)} />
@@ -66,53 +79,30 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
           </dl>
         </section>
 
-        <aside className="space-y-6">
-          <section className="card">
-            <h2 className="legend mb-3">Share with the house</h2>
-            <ShareButtons app={app} />
-          </section>
-
-          <section className="card">
-            <h2 className="legend mb-3">Decision</h2>
-            <form action={setStatus.bind(null, app.id)} className="flex flex-wrap gap-2">
-              {STATUSES.map((status) => (
-                <button
-                  key={status}
-                  type="submit"
-                  name="status"
-                  value={status}
-                  disabled={status === app.status}
-                  className="btn-secondary capitalize"
-                >
-                  {status === "pending" ? "Back to pending" : status === "approved" ? "Approve" : "Decline"}
-                </button>
+        <section className="card lg:col-span-2">
+          <h2 className="legend mb-3">Housemate notes</h2>
+          {appNotes.length === 0 ? (
+            <p className="text-sm text-muted">No notes yet.</p>
+          ) : (
+            <ul className="space-y-3">
+              {appNotes.map((note) => (
+                <li key={note.id} className="text-sm">
+                  <div className="font-medium">
+                    {note.author} <span className="font-normal text-muted">· {formatDate(note.createdAt)}</span>
+                  </div>
+                  <p className="whitespace-pre-wrap">{note.body}</p>
+                </li>
               ))}
-            </form>
-          </section>
-
-          <section className="card">
-            <h2 className="legend mb-3">Housemate notes</h2>
-            {appNotes.length === 0 ? (
-              <p className="text-sm text-muted">No notes yet.</p>
-            ) : (
-              <ul className="space-y-3">
-                {appNotes.map((note) => (
-                  <li key={note.id} className="text-sm">
-                    <div className="font-medium">
-                      {note.author} <span className="font-normal text-muted">· {formatDate(note.createdAt)}</span>
-                    </div>
-                    <p className="whitespace-pre-wrap">{note.body}</p>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <form action={addNote.bind(null, app.id)} className="mt-4 space-y-2 border-t border-line pt-4">
-              <input name="author" required placeholder="Your name" defaultValue={reviewerName} className="input" />
-              <textarea name="body" required rows={3} placeholder="Add a note or vote…" className="input" />
-              <button type="submit" className="btn-primary w-full">Add note</button>
-            </form>
-          </section>
-        </aside>
+            </ul>
+          )}
+          <form action={addNote.bind(null, app.id)} className="mt-4 space-y-2 border-t border-line pt-3">
+            <input name="author" required placeholder="Your name" defaultValue={reviewerName} className="input" />
+            <textarea name="body" required rows={2} placeholder="Add a note or vote…" className="input" />
+            <div className="flex justify-end">
+              <button type="submit" className="btn-primary">Add note</button>
+            </div>
+          </form>
+        </section>
       </div>
     </>
   );

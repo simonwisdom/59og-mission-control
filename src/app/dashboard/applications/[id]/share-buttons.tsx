@@ -82,39 +82,33 @@ export function ShareButtons({ app }: Props) {
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
       flash({ tone: "ok", message: "Image copied" });
     } catch {
-      flash({ tone: "error", message: "Couldn't copy the image. Try downloading it." });
+      flash({ tone: "error", message: "Couldn't copy the image. Try View image instead." });
     }
   }
 
   return (
-    <div className="space-y-3">
-      {/* eslint-disable-next-line @next/next/no-img-element -- authenticated, generated image; nothing for next/image to optimise */}
-      <img
-        src={imageUrl}
-        alt={`Postcard summary of ${app.name}'s application`}
-        width={1200}
-        height={800}
-        className="h-auto w-full border border-rule"
-      />
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="legend mr-1">Share with the house</span>
       {canShare && (
-        <button type="button" onClick={share} className="btn-primary w-full">
+        <button type="button" onClick={share} className="btn-primary py-1.5 text-sm">
           Share…
         </button>
       )}
-      <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={copyText} className="btn-secondary">
-          Copy text
-        </button>
-        <button type="button" onClick={copyImage} className="btn-secondary">
-          Copy image
-        </button>
-        <a href={imageUrl} download={fileName} className="btn-secondary">
-          Download
-        </a>
-      </div>
-      <p aria-live="polite" className={`text-sm ${feedback?.tone === "error" ? "text-danger" : "text-ink-soft"}`}>
-        {feedback?.message ?? " "}
-      </p>
+      <button type="button" onClick={copyText} className="btn-secondary">
+        Copy text
+      </button>
+      <button type="button" onClick={copyImage} className="btn-secondary">
+        Copy image
+      </button>
+      <a href={imageUrl} target="_blank" rel="noopener" className="btn-secondary">
+        View image
+      </a>
+      <span
+        aria-live="polite"
+        className={`ml-1 text-sm ${feedback?.tone === "error" ? "text-danger" : "text-ink-soft"}`}
+      >
+        {feedback?.message}
+      </span>
     </div>
   );
 }
