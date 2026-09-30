@@ -135,14 +135,14 @@ export function ApplyForm() {
           className="mt-1 size-4 accent-accent"
         />
         <span>
-          I agree to follow the{" "}
+          I have read the{" "}
           <a
             href={HOUSE_RULES_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="text-accent underline underline-offset-2"
           >
-            house rules
+            onboarding doc
           </a>
           .
         </span>

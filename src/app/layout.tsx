@@ -8,8 +8,8 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: { default: "59OG Mission Control", template: "%s · 59OG" },
-  description: "House services for 59OG",
+  title: { default: "The Olive Grove", template: "%s · The Olive Grove" },
+  description: "House services for The Olive Grove",
   robots: { index: false },
 };
 

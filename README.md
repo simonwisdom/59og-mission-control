@@ -1,4 +1,4 @@
-# 59OG Mission Control
+# The Olive Grove Mission Control
 
 A dashboard for running house services. The first service is **guest applications**:
 

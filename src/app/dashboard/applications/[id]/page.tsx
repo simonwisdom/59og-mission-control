@@ -60,7 +60,7 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
             <Detail label="About them and their visit" value={app.about} />
             <Detail label="Who they know here" value={app.connection} />
             <Detail label="Anything we should know" value={app.anythingElse} />
-            <Detail label="Agreed to house rules" value={app.agreedToRules ? "Yes" : "No"} />
+            <Detail label="Read the onboarding doc" value={app.agreedToRules ? "Yes" : "No"} />
           </dl>
         </section>
 

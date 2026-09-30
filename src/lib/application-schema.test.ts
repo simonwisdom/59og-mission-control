@@ -78,7 +78,7 @@ describe("parseApplication", () => {
     expect(!result.success && result.errors.partySize).toBeDefined();
   });
 
-  it("requires agreeing to the house rules", () => {
+  it("requires confirming they have read the onboarding doc", () => {
     const result = parseApplication(formData({ agreedToRules: null }));
     expect(!result.success && result.errors.agreedToRules).toBeDefined();
   });

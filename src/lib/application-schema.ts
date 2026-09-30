@@ -25,7 +25,7 @@ const fields = z.object({
   about: required("Tell us a bit about yourself and your visit"),
   connection: optional(200),
   anythingElse: optional(),
-  agreedToRules: z.literal("on", "You need to agree to the house rules").transform(() => true),
+  agreedToRules: z.literal("on", "Please read the onboarding doc first").transform(() => true),
 });
 
 const stayDates = fields.pick({ arrivalDate: true, departureDate: true });
