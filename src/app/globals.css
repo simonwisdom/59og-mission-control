@@ -1,26 +1,69 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --background: #f7f5f0;
+  --surface: #ffffff;
+  --foreground: #1f1d1a;
+  --muted: #6b665e;
+  --line: #e4e0d8;
+  --accent: #2f6f5e;
+  --accent-fg: #ffffff;
+  --danger: #b4233c;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #161513;
+    --surface: #1f1e1b;
+    --foreground: #eeebe5;
+    --muted: #a39e94;
+    --line: #34322e;
+    --accent: #6cbfa6;
+    --accent-fg: #10231d;
+    --danger: #f2849a;
   }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-geist-sans);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-line bg-surface p-5;
+  }
+  .legend {
+    @apply text-sm font-semibold tracking-wide text-muted uppercase;
+  }
+  .label {
+    @apply mb-1 block text-sm font-medium;
+  }
+  .hint {
+    @apply mb-1 block text-xs text-muted;
+  }
+  .input {
+    @apply block w-full rounded-lg border border-line bg-background px-3 py-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 aria-invalid:border-danger;
+  }
+  .error {
+    @apply mt-1 block text-sm text-danger;
+  }
+  .btn-primary {
+    @apply inline-block rounded-lg bg-accent px-4 py-2 font-medium text-accent-fg hover:opacity-90 disabled:opacity-50;
+  }
+  .btn-secondary {
+    @apply rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-background disabled:cursor-default disabled:opacity-40;
+  }
 }

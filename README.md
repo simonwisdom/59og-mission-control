@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 59OG Mission Control
 
-## Getting Started
+A dashboard for running house services. The first service is **guest applications**:
 
-First, run the development server:
+- `/apply`: public form where potential guests apply to stay
+- `/dashboard`: housemates log in with the shared house password to review applications, leave notes, and approve or decline
+
+Built with Next.js 16, Drizzle ORM and Postgres. Hosted on Railway.
+
+## Local development
+
+You need Node 24 and a Postgres database.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env        # then fill in the values
+npm install
+npm run db:migrate
+npm run dev                 # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Generate the secrets with:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+openssl rand -base64 18     # HOUSE_PASSWORD
+openssl rand -base64 48     # SESSION_SECRET
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts
 
-## Learn More
+| Command               | What it does                                     |
+| --------------------- | ------------------------------------------------ |
+| `npm test`            | Unit tests (vitest)                              |
+| `npm run lint`        | ESLint                                           |
+| `npm run db:generate` | Create a migration after editing `src/db/schema.ts` |
+| `npm run db:migrate`  | Apply migrations                                 |
 
-To learn more about Next.js, take a look at the following resources:
+## Deploying to Railway
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Create a Railway project and add a **Postgres** database.
+2. Add a service from this repo (GitHub) or run `railway up` from this folder.
+3. Set the service variables:
+   - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}`
+   - `HOUSE_PASSWORD`: long and random, shared with housemates
+   - `SESSION_SECRET`: 32+ random characters
+4. Generate a public domain under the service's Networking settings.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`railway.json` runs migrations as the pre-deploy command, so schema changes apply automatically.
 
-## Deploy on Vercel
+## Security notes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- There's one shared password. Change `HOUSE_PASSWORD` when someone moves out. To log everyone out immediately, also change `SESSION_SECRET`.
+- Failed logins are limited to 5 per IP every 15 minutes (in memory, so the count resets on redeploy).
+- Every dashboard page and server action checks the session itself; `src/proxy.ts` is only an early redirect.
+- Auth lives in `src/lib/auth.ts`, `src/lib/session.ts` and `src/app/login/`, so moving to per-person Google sign-in later only touches those.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Adding a new service
+
+Add tables to `src/db/schema.ts`, run `npm run db:generate`, add pages under `src/app/dashboard/<service>/`, and add a card to `src/app/dashboard/page.tsx`.
