@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { ApplyForm } from "./apply-form";
+import { PixelatedBackground } from "./pixelated-background";
 
 export const metadata: Metadata = { title: "Apply to stay" };
 
 export default function ApplyPage() {
   return (
     <div className="mx-auto max-w-4xl px-5 pt-10 pb-20 lg:pt-16">
-      <header className="mb-10 max-w-2xl">
+      <PixelatedBackground />
+      <header className="mb-10 max-w-2xl bg-paper/90 px-5 py-4">
         <h1 className="hand text-4xl leading-tight sm:text-5xl">
           Come and stay at The Olive Grove
         </h1>
