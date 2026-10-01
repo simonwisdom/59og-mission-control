@@ -181,7 +181,8 @@ export function ApplyForm() {
       </div>
 
       <div className="mt-8 flex flex-wrap items-center justify-between gap-x-8 gap-y-4">
-        <div>
+        {/* Paper backing so the text stays readable over the photo behind the page */}
+        <div className="bg-paper/90 px-4 py-3">
           <label className="flex items-start gap-3">
             <input
               type="checkbox"
