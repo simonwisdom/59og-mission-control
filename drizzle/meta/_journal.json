@@ -15,6 +15,13 @@
       "when": 1790792374636,
       "tag": "0001_add_offering",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790940452966,
+      "tag": "0002_add_house_documents",
+      "breakpoints": true
     }
   ]
 }

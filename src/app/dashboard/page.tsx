@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { count, eq } from "drizzle-orm";
+import { count, eq, isNotNull } from "drizzle-orm";
 import { db } from "@/db";
-import { applications } from "@/db/schema";
+import { applications, houseDocuments } from "@/db/schema";
+import { expiryStatus } from "@/lib/documents";
+import { todayInLondon } from "@/lib/format";
 
 const accountLinks: { name: string; note: string; href: string | null }[] = [
   { name: "Sainsbury's", note: "Online shopping", href: "https://www.sainsburys.co.uk/gol-ui/groceries" },
@@ -19,6 +21,16 @@ export default async function DashboardHome() {
     .from(applications)
     .where(eq(applications.status, "pending"));
 
+  const today = todayInLondon();
+  const datedDocs = await db
+    .select({ expiresOn: houseDocuments.expiresOn })
+    .from(houseDocuments)
+    .where(isNotNull(houseDocuments.expiresOn));
+  const needsAttention = datedDocs.filter((doc) => {
+    const status = expiryStatus(doc.expiresOn, today);
+    return status === "soon" || status === "expired";
+  }).length;
+
   return (
     <>
       <h1 className="hand mb-6 text-2xl">House services</h1>
@@ -32,6 +44,14 @@ export default async function DashboardHome() {
         <Link href="/dashboard/energy" className="card block hover:border-accent">
           <h2 className="hand text-lg">Energy</h2>
           <p className="mt-1 text-sm text-muted">Daily electricity and gas use from the smart meters</p>
+        </Link>
+        <Link href="/dashboard/documents" className="card block hover:border-accent">
+          <h2 className="hand text-lg">Key documents</h2>
+          <p className={`mt-1 text-sm ${needsAttention ? "font-medium text-pillar" : "text-muted"}`}>
+            {needsAttention === 0
+              ? "Tenancy, certificates and renewal dates"
+              : `⏰ ${needsAttention} due for renewal or expired`}
+          </p>
         </Link>
       </div>
 

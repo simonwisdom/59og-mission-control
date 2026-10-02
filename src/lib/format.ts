@@ -5,3 +5,8 @@ export function formatDate(value: string | Date) {
   const date = typeof value === "string" ? new Date(`${value}T00:00:00Z`) : value;
   return dateFormat.format(date);
 }
+
+// Today's date in the house's time zone, as "YYYY-MM-DD"
+export function todayInLondon() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date());
+}

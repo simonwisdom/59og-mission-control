@@ -47,6 +47,16 @@ export const notes = pgTable("notes", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// Only a link and a date: the files themselves stay in Google Drive.
+export const houseDocuments = pgTable("house_documents", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  url: text("url").notNull(),
+  expiresOn: date("expires_on"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export type Application = typeof applications.$inferSelect;
 export type Note = typeof notes.$inferSelect;
 export type ApplicationStatus = (typeof applicationStatus.enumValues)[number];
+export type HouseDocument = typeof houseDocuments.$inferSelect;

@@ -6,6 +6,7 @@ A dashboard for running house services:
 - `/dashboard`: housemates log in with the shared house password. From there:
   - **Guest applications**: review applications, leave notes, and approve or decline
   - **Energy**: daily electricity and gas use from the Octopus smart meters
+  - **Key documents**: links to the tenancy agreement, certificates and so on in Google Drive, with expiry dates that get flagged 60 days ahead. Only the link and date are stored here, never the files.
   - Links to the house accounts (Sainsbury's, Octopus, Thames Water, Hyperoptic, Hackney permits and bike hangars)
 
 Built with Next.js 16, Drizzle ORM and Postgres. Hosted on Railway.
