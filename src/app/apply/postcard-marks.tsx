@@ -24,7 +24,7 @@ export function Stamp() {
 // Circular postmark with wavy cancellation lines trailing to the left.
 export function Postmark({ className = "" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 220 120" aria-hidden="true" className={`text-brick ${className}`}>
+    <svg viewBox="0 0 220 120" aria-hidden="true" className={`text-tile ${className}`}>
       <g fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
         {[42, 54, 66, 78].map((y) => (
           <path key={y} d={`M4 ${y} q 12 -9 24 0 t 24 0 t 24 0 t 24 0`} />

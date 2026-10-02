@@ -46,20 +46,21 @@ export function ApplyForm() {
 
   return (
     <form action={action}>
-      <div className="postcard grid md:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+      <div className="postcard grid md:grid-cols-[minmax(0,6fr)_minmax(0,5fr)]">
         {/* Message side */}
-        <div className="space-y-6 p-6 sm:p-8">
+        <div className="space-y-5 p-6 sm:p-8">
           <p className="hand text-2xl">Dear Olive Grove,</p>
 
           <label className="block">
             <span className="hint">Tell us a bit about yourself and your visit</span>
             <textarea
               name="about"
-              rows={6}
+              rows={4}
               required
+              placeholder="Your message…"
               defaultValue={values.about}
               aria-invalid={!!errors.about}
-              className="ruled"
+              className="textbox"
             />
             {errors.about && <span className="error">{errors.about}</span>}
           </label>
@@ -73,8 +74,9 @@ export function ApplyForm() {
               rows={2}
               required
               defaultValue={values.offering}
+              placeholder="Your ideas…"
               aria-invalid={!!errors.offering}
-              className="ruled"
+              className="textbox"
             />
             {errors.offering && <span className="error">{errors.offering}</span>}
           </label>
@@ -87,8 +89,9 @@ export function ApplyForm() {
             <textarea
               name="anythingElse"
               rows={2}
+              placeholder="Anything else…"
               defaultValue={values.anythingElse}
-              className="ruled"
+              className="textbox"
             />
           </label>
 
@@ -102,17 +105,17 @@ export function ApplyForm() {
               placeholder="your name"
               defaultValue={values.name}
               aria-invalid={!!errors.name}
-              className="input font-hand text-2xl placeholder:text-rule"
+              className="input mt-1"
             />
             {errors.name && <span className="error">{errors.name}</span>}
           </label>
         </div>
 
         {/* Address side */}
-        <div className="space-y-6 border-t-[1.5px] border-rule p-6 sm:p-8 md:border-t-0 md:border-l-[1.5px]">
+        <div className="space-y-5 border-t border-dashed border-rule p-6 sm:p-8 md:my-6 md:border-t-0 md:border-l md:py-2">
           <StampWithPostmark />
 
-          <p className="hand border-b-[1.5px] border-rule pb-1.5 text-lg">
+          <p className="hand text-lg">
             To: The Olive Grove, London
           </p>
 
@@ -123,6 +126,7 @@ export function ApplyForm() {
               type="email"
               required
               autoComplete="email"
+              placeholder="you@example.com"
               defaultValue={values.email}
               aria-invalid={!!errors.email}
               className="input"
@@ -132,84 +136,90 @@ export function ApplyForm() {
 
           <label className="block">
             <span className="hint">Who do you know here? (optional)</span>
-            <input name="connection" defaultValue={values.connection} className="input" />
+            <input
+              name="connection"
+              placeholder="A friend’s name…"
+              defaultValue={values.connection}
+              className="input"
+            />
           </label>
 
           <fieldset>
             <legend className="hint">Visiting</legend>
-            <div className="grid grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-2">
-              <span>from</span>
-              <input
-                name="arrivalDate"
-                type="date"
-                required
-                aria-label="Arrival date"
-                defaultValue={values.arrivalDate}
-                aria-invalid={!!errors.arrivalDate}
-                className="input-inline text-left"
-              />
-              <span>to</span>
-              <input
-                name="departureDate"
-                type="date"
-                required
-                aria-label="Departure date"
-                defaultValue={values.departureDate}
-                aria-invalid={!!errors.departureDate}
-                className="input-inline text-left"
-              />
-              <span>with</span>
-              <span className="flex items-baseline gap-2">
+            <div className="grid grid-cols-2 gap-3">
+              <label>
+                <span className="hint">from</span>
                 <input
-                  name="partySize"
-                  type="number"
-                  min={1}
-                  max={20}
+                  name="arrivalDate"
+                  type="date"
                   required
-                  aria-label="Number of people"
-                  value={partySize}
-                  onChange={(e) => setPartySize(e.target.value)}
-                  aria-invalid={!!errors.partySize}
-                  className="input-inline w-14"
+                  aria-label="Arrival date"
+                  defaultValue={values.arrivalDate}
+                  aria-invalid={!!errors.arrivalDate}
+                  className="input px-2 text-sm"
                 />
-                {partySize === "1" ? "person" : "people"}
-              </span>
+              </label>
+              <label>
+                <span className="hint">to</span>
+                <input
+                  name="departureDate"
+                  type="date"
+                  required
+                  aria-label="Departure date"
+                  defaultValue={values.departureDate}
+                  aria-invalid={!!errors.departureDate}
+                  className="input px-2 text-sm"
+                />
+              </label>
             </div>
+            <label className="mt-3 flex items-center gap-3">
+              <span>with</span>
+              <input
+                name="partySize"
+                type="number"
+                min={1}
+                max={20}
+                required
+                aria-label="Number of people"
+                value={partySize}
+                onChange={(e) => setPartySize(e.target.value)}
+                aria-invalid={!!errors.partySize}
+                className="input-inline w-16"
+              />
+              {partySize === "1" ? "person" : "people"}
+            </label>
             {stayError && <span className="error">{stayError}</span>}
           </fieldset>
-        </div>
-      </div>
 
-      <div className="mt-8 flex flex-wrap items-center justify-between gap-x-8 gap-y-4">
-        {/* Paper backing so the text stays readable over the photo behind the page */}
-        <div className="bg-paper/90 px-4 py-3">
-          <label className="flex items-start gap-3">
-            <input
-              type="checkbox"
-              name="agreedToRules"
-              required
-              defaultChecked={values.agreedToRules === "on"}
-              className="mt-1 size-4 accent-lamp"
-            />
-            <span>
-              I have read the{" "}
-              <a
-                href={HOUSE_RULES_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline decoration-brick decoration-2 underline-offset-4 hover:decoration-lamp"
-              >
-                onboarding doc
-              </a>
-              .
-            </span>
-          </label>
-          {errors.agreedToRules && <span className="error">{errors.agreedToRules}</span>}
-        </div>
+          <div>
+            <label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                name="agreedToRules"
+                required
+                defaultChecked={values.agreedToRules === "on"}
+                className="mt-1 size-4 accent-tile"
+              />
+              <span>
+                I have read the{" "}
+                <a
+                  href={HOUSE_RULES_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline decoration-tile decoration-2 underline-offset-4 hover:decoration-pillar"
+                >
+                  onboarding doc
+                </a>
+                .
+              </span>
+            </label>
+            {errors.agreedToRules && <span className="error">{errors.agreedToRules}</span>}
+          </div>
 
-        <button type="submit" disabled={pending} className="btn-primary">
-          {pending ? "Posting…" : "Send postcard"}
-        </button>
+          <button type="submit" disabled={pending} className="btn-primary w-full">
+            {pending ? "Posting…" : "Send postcard →"}
+          </button>
+        </div>
       </div>
 
       {/* Honeypot, hidden from people and screen readers */}

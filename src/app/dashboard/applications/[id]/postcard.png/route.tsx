@@ -10,10 +10,10 @@ import { POSTCARD_LABELS, formatPartySize } from "@/lib/field-labels";
 
 // Colours from docs/design-direction.md
 const paper = "#ffffff";
-const ink = "#1d3326";
-const inkSoft = "#55685c";
-const rule = "#d9d3c7";
-const brick = "#a8652f";
+const ink = "#16325c";
+const inkSoft = "#4f6380";
+const rule = "#c9d3e0";
+const tile = "#2f6fae";
 
 const assets = join(process.cwd(), "assets");
 const [handFont, textFont, housePhoto] = await Promise.all([
@@ -60,7 +60,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   return new ImageResponse(
     (
-      <div style={{ display: "flex", width: "100%", height: "100%", background: "#eef0ec", padding: 40 }}>
+      <div style={{ display: "flex", width: "100%", height: "100%", background: "#eef1f5", padding: 40 }}>
         <div
           style={{
             display: "flex",
@@ -128,7 +128,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
                       key={y}
                       d={`M4 ${y} q 12 -9 24 0 t 24 0 t 24 0 t 24 0`}
                       fill="none"
-                      stroke={brick}
+                      stroke={tile}
                       strokeWidth="4"
                       strokeLinecap="round"
                     />
@@ -142,8 +142,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
                     width: 140,
                     height: 140,
                     borderRadius: 70,
-                    border: `4px solid ${brick}`,
-                    color: brick,
+                    border: `4px solid ${tile}`,
+                    color: tile,
                     fontFamily: "Shantell",
                     fontSize: 19,
                   }}
