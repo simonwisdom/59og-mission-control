@@ -1,9 +1,12 @@
 # The Olive Grove Mission Control
 
-A dashboard for running house services. The first service is **guest applications**:
+A dashboard for running house services:
 
 - `/apply`: public form where potential guests apply to stay
-- `/dashboard`: housemates log in with the shared house password to review applications, leave notes, and approve or decline
+- `/dashboard`: housemates log in with the shared house password. From there:
+  - **Guest applications**: review applications, leave notes, and approve or decline
+  - **Energy**: daily electricity and gas use from the Octopus smart meters
+  - Links to the house accounts (Sainsbury's, Octopus, Thames Water, Hyperoptic, Hackney permits and bike hangars)
 
 Built with Next.js 16, Drizzle ORM and Postgres. Hosted on Railway.
 
@@ -42,6 +45,7 @@ openssl rand -base64 48     # SESSION_SECRET
    - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}`
    - `HOUSE_PASSWORD`: long and random, shared with housemates
    - `SESSION_SECRET`: 32+ random characters
+   - `OCTOPUS_API_KEY` and `OCTOPUS_ACCOUNT_NUMBER` (optional): from the Octopus website under Personal details > API access. Without them the Energy page just says what to set.
 4. Generate a public domain under the service's Networking settings.
 
 `npm start` applies any pending migrations before starting the server, so schema changes apply automatically on deploy.

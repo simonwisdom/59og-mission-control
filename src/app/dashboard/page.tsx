@@ -29,6 +29,10 @@ export default async function DashboardHome() {
             {pending === 0 ? "Nothing waiting for review" : `${pending} waiting for review`}
           </p>
         </Link>
+        <Link href="/dashboard/energy" className="card block hover:border-accent">
+          <h2 className="hand text-lg">Energy</h2>
+          <p className="mt-1 text-sm text-muted">Daily electricity and gas use from the smart meters</p>
+        </Link>
       </div>
 
       <h2 className="hand mt-10 mb-4 text-xl">Accounts</h2>
