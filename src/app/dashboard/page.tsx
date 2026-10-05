@@ -2,6 +2,7 @@ import Link from "next/link";
 import { count, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { applications } from "@/db/schema";
+import { UsefulLinks } from "./useful-links";
 
 export default async function DashboardHome() {
   const [{ pending }] = await db
@@ -20,6 +21,7 @@ export default async function DashboardHome() {
           </p>
         </Link>
       </div>
+      <UsefulLinks />
     </>
   );
 }
