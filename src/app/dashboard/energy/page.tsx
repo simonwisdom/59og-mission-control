@@ -26,7 +26,8 @@ export default async function EnergyPage() {
       {energy.status === "ok" && (
         <p className="mt-2 text-xs text-muted">
           From the smart meters via Octopus, usually a day behind. Gas is converted from cubic metres to kWh the same
-          way the bill does.
+          way the bill does. Costs are estimated from the tariff&apos;s unit rates and standing charges, including VAT;
+          they leave out credits and discounts, so the bill may differ slightly.
         </p>
       )}
     </>

@@ -3,8 +3,9 @@ import { formatDate } from "@/lib/format";
 
 const shortDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 const short = (date: string) => shortDate.format(new Date(`${date}T00:00:00Z`));
+const pounds = (value: number, digits = 2) => `£${value.toFixed(digits)}`;
 
-// Daily kWh as a bar chart. Plain HTML bars so it stays crisp at any width.
+// Daily kWh as a bar chart, with costs in the headline and table when the tariff was priced. Plain HTML bars so it stays crisp at any width.
 export function UsageChart({ title, days }: { title: string; days: DailyUsage[] }) {
   if (days.length === 0) {
     return (
@@ -17,6 +18,8 @@ export function UsageChart({ title, days }: { title: string; days: DailyUsage[] 
 
   const total = days.reduce((sum, day) => sum + day.kWh, 0);
   const max = Math.max(...days.map((day) => day.kWh), 0.1);
+  const priced = days.every((day) => day.cost !== null);
+  const totalCost = days.reduce((sum, day) => sum + (day.cost ?? 0), 0);
 
   return (
     <section className="card">
@@ -26,10 +29,21 @@ export function UsageChart({ title, days }: { title: string; days: DailyUsage[] 
           {short(days[0].date)} to {short(days[days.length - 1].date)}
         </p>
       </div>
-      <p className="mt-1">
-        <span className="text-2xl font-medium">{Math.round(total)} kWh</span>{" "}
-        <span className="text-sm text-muted">· {(total / days.length).toFixed(1)} kWh a day on average</span>
-      </p>
+      {priced ? (
+        <>
+          <p className="mt-1 text-2xl font-medium">
+            {Math.round(total)} kWh · {pounds(totalCost, 0)}
+          </p>
+          <p className="text-sm text-muted">
+            {(total / days.length).toFixed(1)} kWh, {pounds(totalCost / days.length)} a day on average
+          </p>
+        </>
+      ) : (
+        <p className="mt-1">
+          <span className="text-2xl font-medium">{Math.round(total)} kWh</span>{" "}
+          <span className="text-sm text-muted">· {(total / days.length).toFixed(1)} kWh a day on average</span>
+        </p>
+      )}
 
       <div className="relative mt-5">
         <div className="absolute inset-x-0 top-0 border-t border-dashed border-line" />
@@ -43,6 +57,7 @@ export function UsageChart({ title, days }: { title: string; days: DailyUsage[] 
               />
               <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-[2px] border border-line bg-paper px-2 py-1 text-xs shadow group-hover:block">
                 {formatDate(day.date)}: <strong>{day.kWh.toFixed(1)} kWh</strong>
+                {day.cost !== null && <> · {pounds(day.cost)}</>}
               </div>
             </div>
           ))}
@@ -61,6 +76,7 @@ export function UsageChart({ title, days }: { title: string; days: DailyUsage[] 
               <tr key={day.date} className="border-t border-line">
                 <td className="py-1">{formatDate(day.date)}</td>
                 <td className="py-1 text-right tabular-nums">{day.kWh.toFixed(1)} kWh</td>
+                {priced && <td className="py-1 text-right tabular-nums">{pounds(day.cost ?? 0)}</td>}
               </tr>
             ))}
           </tbody>
