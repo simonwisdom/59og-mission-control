@@ -76,8 +76,8 @@ describe("toDailyUsage", () => {
 
   it("keys electricity by local date, oldest first", () => {
     expect(toDailyUsage(results, "electricity", "m3", null)).toEqual([
-      { date: "2026-09-29", kWh: 3, cost: null },
-      { date: "2026-09-30", kWh: 2, cost: null },
+      { date: "2026-09-29", kWh: 3, cost: null, readings: 1 },
+      { date: "2026-09-30", kWh: 2, cost: null, readings: 1 },
     ]);
   });
 
@@ -104,6 +104,7 @@ describe("toDailyUsage", () => {
     };
     const [day] = toDailyUsage(halfHours, "electricity", "m3", prices);
     expect(day.kWh).toBe(3);
+    expect(day.readings).toBe(2);
     expect(day.cost).toBeCloseTo((1 * 8 + 2 * 30 + 50) / 100);
   });
 

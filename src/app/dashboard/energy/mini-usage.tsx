@@ -1,14 +1,14 @@
 import type { DailyUsage } from "@/lib/octopus";
 
-const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
-
-// A week of daily kWh as small bars, for the dashboard tile. The full chart is on the Energy page.
+// A week of daily kWh as small bars with the week's total, for the dashboard. The full chart is
+// on the Energy page.
 export function MiniUsage({ title, days }: { title: string; days: DailyUsage[] }) {
   if (days.length === 0) return null;
   const max = Math.max(...days.map((day) => day.kWh), 0.1);
-  const last = days[days.length - 1];
   const priced = days.every((day) => day.cost !== null);
-  const weekCost = days.reduce((sum, day) => sum + (day.cost ?? 0), 0);
+  const total = priced
+    ? `£${days.reduce((sum, day) => sum + (day.cost ?? 0), 0).toFixed(0)}`
+    : `${Math.round(days.reduce((sum, day) => sum + day.kWh, 0))} kWh`;
 
   return (
     <div className="flex items-end gap-3">
@@ -21,12 +21,8 @@ export function MiniUsage({ title, days }: { title: string; days: DailyUsage[] }
           />
         ))}
       </div>
-      <p className="text-sm leading-tight">
-        <span className="font-medium">{title}</span>{" "}
-        <span className="text-muted">
-          {weekday.format(new Date(`${last.date}T00:00:00Z`))}: {last.kWh.toFixed(1)} kWh
-          {priced && <> · £{weekCost.toFixed(0)} over {days.length} days</>}
-        </span>
+      <p className="leading-tight">
+        <span className="text-lg font-medium tabular-nums">{total}</span> <span className="text-muted">{title}</span>
       </p>
     </div>
   );

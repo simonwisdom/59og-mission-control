@@ -7,7 +7,8 @@ const API = "https://api.octopus.energy/v1";
 
 export type Fuel = "electricity" | "gas";
 // cost is in pounds including VAT, or null when the tariff couldn't be priced
-export type DailyUsage = { date: string; kWh: number; cost: number | null };
+// `readings` counts half hours: 48 in a full day, 46 or 50 when the clocks change
+export type DailyUsage = { date: string; kWh: number; cost: number | null; readings: number };
 export type Agreement = { tariff_code: string; valid_from: string; valid_to: string | null };
 export type Meter = { fuel: Fuel; pointId: string; serials: string[]; agreements: Agreement[] };
 // Prices in pence from the products API: per kWh for unit rates, per day for standing charges
@@ -89,23 +90,24 @@ export function toDailyUsage(
   prices: Prices | null,
 ): DailyUsage[] {
   const factor = fuel === "gas" && gasUnit === "m3" ? KWH_PER_M3 : 1;
-  const byDay = new Map<string, { kWh: number; pence: number | null }>();
+  const byDay = new Map<string, { kWh: number; pence: number | null; readings: number }>();
   for (const row of results) {
     // interval_start is local time with an offset, e.g. "2026-09-30T00:00:00+01:00"
     const date = row.interval_start.slice(0, 10);
-    const day = byDay.get(date) ?? { kWh: 0, pence: prices ? 0 : null };
+    const day = byDay.get(date) ?? { kWh: 0, pence: prices ? 0 : null, readings: 0 };
     const kWh = row.consumption * factor;
     const rate = prices && rateAt(prices.unitRates, Date.parse(row.interval_start));
     day.kWh += kWh;
+    day.readings += 1;
     day.pence = day.pence !== null && rate != null ? day.pence + kWh * rate : null;
     byDay.set(date, day);
   }
   return [...byDay]
-    .map(([date, { kWh, pence }]) => {
+    .map(([date, { kWh, pence, readings }]) => {
       // Standing charges change at local midnight, so midday UTC is safely inside the day
       const standing = prices && rateAt(prices.standingCharges, Date.parse(`${date}T12:00:00Z`));
       const cost = pence !== null && standing != null ? (pence + standing) / 100 : null;
-      return { date, kWh, cost };
+      return { date, kWh, cost, readings };
     })
     .sort((a, b) => a.date.localeCompare(b.date));
 }

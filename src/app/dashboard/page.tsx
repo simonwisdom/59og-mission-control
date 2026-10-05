@@ -4,21 +4,40 @@ import { db } from "@/db";
 import { applications } from "@/db/schema";
 import { formatDate } from "@/lib/format";
 import { getBinCollections, type Collection } from "@/lib/hackney-bins";
-import { getEnergyUsage } from "@/lib/octopus";
+import { getEnergyUsage, type DailyUsage } from "@/lib/octopus";
 import { MiniUsage } from "./energy/mini-usage";
 import { UsefulLinks } from "./useful-links";
 
-// Guest dates are London calendar days, so compare against today's date there
+// Guest and bin dates are London calendar days, so compare against today's date there
 const londonToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date());
 
-const binDay = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "short", timeZone: "UTC" });
+const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "long", timeZone: "UTC" });
+const dayAndDate = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "short", timeZone: "UTC" });
 const BINS_PAGE = "https://www.hackney.gov.uk/rubbish-and-recycling/rubbish-recycling-and-food-waste-collections/check-your-collection-day";
+const DAY_MS = 86_400_000;
 
-function collectionLabel(collection: Collection, today: string) {
-  const days = (Date.parse(collection.date) - Date.parse(today)) / 86_400_000;
-  const when = days === 0 ? "Today" : days === 1 ? "Tomorrow" : binDay.format(new Date(`${collection.date}T00:00:00Z`));
-  return { when, bins: collection.bins.join(", ").toLowerCase().replace(/^./, (c) => c.toUpperCase()) };
+// ["Recycling", "Food waste", "Rubbish"] → "recycling, food waste and rubbish"
+function binList(bins: string[]) {
+  const names = bins.map((bin) => bin.toLowerCase());
+  return names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0];
 }
+
+// Bins go out the night before collection
+function binTask(next: Collection, after: Collection | undefined, today: string) {
+  const days = (Date.parse(next.date) - Date.parse(today)) / DAY_MS;
+  const bins = binList(next.bins);
+  const task =
+    days === 0
+      ? `The ${bins} get collected today`
+      : days === 1
+        ? `Put the ${bins} out tonight`
+        : `Put the ${bins} out on ${weekday.format(new Date(Date.parse(next.date) - DAY_MS))} night`;
+  const then = after && `Then ${dayAndDate.format(new Date(`${after.date}T00:00:00Z`))}: ${binList(after.bins)}.`;
+  return { task, then };
+}
+
+// The meter reports a day or so late, so the newest day can be partly read; show only full days
+const fullWeek = (days: DailyUsage[] | null) => (days ?? []).filter((day) => day.readings >= 46).slice(-7);
 
 export default async function DashboardHome() {
   const today = londonToday();
@@ -36,76 +55,79 @@ export default async function DashboardHome() {
       .where(and(eq(applications.status, "approved"), gte(applications.departureDate, today)))
       .orderBy(asc(applications.arrivalDate))
       .limit(3),
-    // One day more than shown, so the first, partly read day can be dropped
-    getEnergyUsage(8),
+    // Two days more than shown, so partly read days at either end can be dropped
+    getEnergyUsage(9),
     getBinCollections(today),
   ]);
-  const nextCollections = bins.status === "ok" ? bins.collections.slice(0, 2) : [];
+  const [nextBins, afterBins] = bins.status === "ok" ? bins.collections : [];
+  const bin = nextBins && binTask(nextBins, afterBins, today);
+  const electricity = energy.status === "ok" ? fullWeek(energy.electricity) : [];
+  const gas = energy.status === "ok" ? fullWeek(energy.gas) : [];
 
   return (
     <>
       <h1 className="section-title mb-5">House services</h1>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <Link href="/dashboard/applications" className="card block border-2 border-ink/80 hover:border-tile">
-          <h2 className="hand text-lg">Guest applications</h2>
-          <p className="mt-1 text-sm text-muted">
-            {pending === 0 ? "Nothing waiting for review" : `${pending} waiting for review`}
-          </p>
-        </Link>
-        <Link href="/dashboard/energy" className="card block border-2 border-ink/80 hover:border-tile">
-          <h2 className="hand text-lg">Energy</h2>
-          {energy.status === "ok" && (energy.electricity?.length || energy.gas?.length) ? (
-            <div className="mt-2 space-y-2">
-              {energy.electricity && <MiniUsage title="Electricity" days={energy.electricity.slice(-7)} />}
-              {energy.gas && <MiniUsage title="Gas" days={energy.gas.slice(-7)} />}
-            </div>
-          ) : (
-            <p className="mt-1 text-sm text-muted">Daily electricity and gas use from the smart meters</p>
-          )}
-        </Link>
+      <div className="grid gap-3 md:grid-cols-2">
         <section className="card border-2 border-ink/80">
-          <h2 className="hand text-lg">Next guests</h2>
-          {guests.length === 0 ? (
-            <p className="mt-1 text-sm text-muted">No approved stays coming up</p>
-          ) : (
-            <ul className="mt-1 space-y-1 text-sm">
-              {guests.map((guest) => (
-                <li key={guest.id}>
-                  <Link href={`/dashboard/applications/${guest.id}`} className="font-medium hover:text-tile">
-                    {guest.name}
-                  </Link>
-                  {guest.partySize > 1 && <span className="text-muted"> +{guest.partySize - 1}</span>}
-                  <span className="block text-muted">
-                    {guest.arrivalDate <= today ? "Staying now, until " : `${formatDate(guest.arrivalDate)} to `}
-                    {formatDate(guest.departureDate)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+          <h2 className="hand text-xl">Needs doing</h2>
+          <ul className="mt-2 divide-y divide-line">
+            <li className="py-3">
+              {bin ? (
+                <>
+                  <p className="font-medium">{bin.task}</p>
+                  {bin.then && <p className="text-sm text-muted">{bin.then}</p>}
+                </>
+              ) : (
+                <a href={BINS_PAGE} target="_blank" rel="noopener noreferrer" className="font-medium hover:text-pillar">
+                  Check bin day on Hackney&apos;s site ↗
+                </a>
+              )}
+            </li>
+            {pending > 0 && (
+              <li className="py-3">
+                <Link href="/dashboard/applications" className="font-medium hover:text-pillar">
+                  Review {pending === 1 ? "a guest application" : `${pending} guest applications`}
+                </Link>
+                <p className="text-sm text-muted">Someone is waiting to hear back</p>
+              </li>
+            )}
+          </ul>
         </section>
-        <section className="card border-2 border-ink/80">
-          <h2 className="hand text-lg">Bin day</h2>
-          {nextCollections.length === 0 ? (
-            <p className="mt-1 text-sm text-muted">
-              <a href={BINS_PAGE} target="_blank" rel="noopener noreferrer" className="hover:text-tile">
-                Check the collection day on Hackney&apos;s site ↗
-              </a>
-            </p>
-          ) : (
-            <ul className="mt-1 space-y-1 text-sm">
-              {nextCollections.map((collection, i) => {
-                const { when, bins: binList } = collectionLabel(collection, today);
-                return (
-                  <li key={collection.date} className={i > 0 ? "text-muted" : undefined}>
-                    <span className="font-medium">{when}</span>
-                    <span className="block text-muted">{binList}</span>
+
+        <div className="grid content-start gap-3">
+          <Link href="/dashboard/energy" className="card block hover:border-tile">
+            <h2 className="hand text-lg">Energy, last 7 days</h2>
+            {electricity.length > 0 || gas.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-x-8 gap-y-2">
+                <MiniUsage title="electricity" days={electricity} />
+                <MiniUsage title="gas" days={gas} />
+              </div>
+            ) : (
+              <p className="mt-1 text-sm text-muted">Daily electricity and gas use from the smart meters</p>
+            )}
+          </Link>
+          <section className="card">
+            <h2 className="hand text-lg">Next guests</h2>
+            {guests.length === 0 ? (
+              <p className="mt-1 text-sm text-muted">No one booked</p>
+            ) : (
+              <ul className="mt-1 space-y-1">
+                {guests.map((guest) => (
+                  <li key={guest.id}>
+                    <Link href={`/dashboard/applications/${guest.id}`} className="font-medium hover:text-pillar">
+                      {guest.name}
+                    </Link>
+                    {guest.partySize > 1 && <span className="text-muted"> and {guest.partySize - 1} more</span>}
+                    <span className="block text-sm text-muted">
+                      {guest.arrivalDate <= today ? "Here now, until " : `${formatDate(guest.arrivalDate)} to `}
+                      {formatDate(guest.departureDate)}
+                    </span>
                   </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
       </div>
       <UsefulLinks />
     </>
