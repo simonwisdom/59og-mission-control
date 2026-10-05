@@ -69,7 +69,7 @@ export default async function DashboardHome() {
       <h1 className="section-title mb-5">House services</h1>
       <div className="grid gap-3 md:grid-cols-2">
         <section className="card border-2 border-ink/80">
-          <h2 className="hand text-xl">Needs doing</h2>
+          <h2 className="hand text-xl">Coming up</h2>
           <ul className="mt-2 divide-y divide-line">
             <li className="py-3">
               {bin ? (
@@ -86,9 +86,8 @@ export default async function DashboardHome() {
             {pending > 0 && (
               <li className="py-3">
                 <Link href="/dashboard/applications" className="font-medium hover:text-pillar">
-                  Review {pending === 1 ? "a guest application" : `${pending} guest applications`}
+                  {pending === 1 ? "A guest application" : `${pending} guest applications`} to look at
                 </Link>
-                <p className="text-sm text-muted">Someone is waiting to hear back</p>
               </li>
             )}
           </ul>
