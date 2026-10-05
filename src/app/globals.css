@@ -122,7 +122,7 @@ body {
       radial-gradient(circle at center, #0000 2.6px, #000 3px) -4px -4px / 8px 8px padding-box;
   }
   /* London street nameplate: carved capitals on a white plate, a navy keyline inside a white
-     margin, and the borough in red underneath. Enamel doesn't change colour at night, so the
+     margin, and the area in red underneath. Enamel doesn't change colour at night, so the
      plate keeps its light-mode colours in dark mode. */
   .street-sign {
     @apply inline-block border-[3px] border-[#16325c] bg-white px-6 pt-3 pb-2 text-center font-plate tracking-[0.06em] text-[#16325c] uppercase;

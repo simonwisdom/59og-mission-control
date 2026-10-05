@@ -24,7 +24,7 @@ export function Nameplate({ className = "", as: Tag = "h1" }: { className?: stri
   return (
     <Tag className={`street-sign ${className}`}>
       The Olive Grove
-      <span className="borough">London Borough of Hackney</span>
+      <span className="borough">Finsbury Park</span>
     </Tag>
   );
 }
