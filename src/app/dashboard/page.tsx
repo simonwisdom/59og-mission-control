@@ -3,6 +3,7 @@ import { and, asc, count, eq, gte } from "drizzle-orm";
 import { db } from "@/db";
 import { applications } from "@/db/schema";
 import { formatDate } from "@/lib/format";
+import { getBinCollections, type Collection } from "@/lib/hackney-bins";
 import { getEnergyUsage } from "@/lib/octopus";
 import { MiniUsage } from "./energy/mini-usage";
 import { UsefulLinks } from "./useful-links";
@@ -10,9 +11,18 @@ import { UsefulLinks } from "./useful-links";
 // Guest dates are London calendar days, so compare against today's date there
 const londonToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date());
 
+const binDay = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "short", timeZone: "UTC" });
+const BINS_PAGE = "https://www.hackney.gov.uk/rubbish-and-recycling/rubbish-recycling-and-food-waste-collections/check-your-collection-day";
+
+function collectionLabel(collection: Collection, today: string) {
+  const days = (Date.parse(collection.date) - Date.parse(today)) / 86_400_000;
+  const when = days === 0 ? "Today" : days === 1 ? "Tomorrow" : binDay.format(new Date(`${collection.date}T00:00:00Z`));
+  return { when, bins: collection.bins.join(", ").toLowerCase().replace(/^./, (c) => c.toUpperCase()) };
+}
+
 export default async function DashboardHome() {
   const today = londonToday();
-  const [[{ pending }], guests, energy] = await Promise.all([
+  const [[{ pending }], guests, energy, bins] = await Promise.all([
     db.select({ pending: count() }).from(applications).where(eq(applications.status, "pending")),
     db
       .select({
@@ -28,7 +38,9 @@ export default async function DashboardHome() {
       .limit(3),
     // One day more than shown, so the first, partly read day can be dropped
     getEnergyUsage(8),
+    getBinCollections(today),
   ]);
+  const nextCollections = bins.status === "ok" ? bins.collections.slice(0, 2) : [];
 
   return (
     <>
@@ -69,6 +81,28 @@ export default async function DashboardHome() {
                   </span>
                 </li>
               ))}
+            </ul>
+          )}
+        </section>
+        <section className="card border-2 border-ink/80">
+          <h2 className="hand text-lg">Bin day</h2>
+          {nextCollections.length === 0 ? (
+            <p className="mt-1 text-sm text-muted">
+              <a href={BINS_PAGE} target="_blank" rel="noopener noreferrer" className="hover:text-tile">
+                Check the collection day on Hackney&apos;s site ↗
+              </a>
+            </p>
+          ) : (
+            <ul className="mt-1 space-y-1 text-sm">
+              {nextCollections.map((collection, i) => {
+                const { when, bins: binList } = collectionLabel(collection, today);
+                return (
+                  <li key={collection.date} className={i > 0 ? "text-muted" : undefined}>
+                    <span className="font-medium">{when}</span>
+                    <span className="block text-muted">{binList}</span>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
