@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { and, asc, count, eq, gte } from "drizzle-orm";
 import { db } from "@/db";
 import { applications } from "@/db/schema";
@@ -39,9 +40,47 @@ function binTask(next: Collection, after: Collection | undefined, today: string)
 // The meter reports a day or so late, so the newest day can be partly read; show only full days
 const fullWeek = (days: DailyUsage[] | null) => (days ?? []).filter((day) => day.readings >= 46).slice(-7);
 
+// Hackney and Octopus can take a few seconds when their cache is cold, so these two stream in
+// after the rest of the page
+
+async function BinDay({ today }: { today: string }) {
+  const bins = await getBinCollections(today);
+  const [nextBins, afterBins] = bins.status === "ok" ? bins.collections : [];
+  if (!nextBins) {
+    return (
+      <a href={BINS_PAGE} target="_blank" rel="noopener noreferrer" className="font-medium hover:text-pillar">
+        Check bin day on Hackney&apos;s site ↗
+      </a>
+    );
+  }
+  const bin = binTask(nextBins, afterBins, today);
+  return (
+    <>
+      <p className="font-medium">{bin.task}</p>
+      {bin.then && <p className="text-sm text-muted">{bin.then}</p>}
+    </>
+  );
+}
+
+async function EnergyWeek() {
+  // Two days more than shown, so partly read days at either end can be dropped
+  const energy = await getEnergyUsage(9);
+  const electricity = energy.status === "ok" ? fullWeek(energy.electricity) : [];
+  const gas = energy.status === "ok" ? fullWeek(energy.gas) : [];
+  if (electricity.length === 0 && gas.length === 0) {
+    return <p className="mt-1 text-sm text-muted">Daily electricity and gas use from the smart meters</p>;
+  }
+  return (
+    <div className="mt-2 flex flex-wrap gap-x-8 gap-y-2">
+      <MiniUsage title="electricity" days={electricity} />
+      <MiniUsage title="gas" days={gas} />
+    </div>
+  );
+}
+
 export default async function DashboardHome() {
   const today = londonToday();
-  const [[{ pending }], guests, energy, bins] = await Promise.all([
+  const [[{ pending }], guests] = await Promise.all([
     db.select({ pending: count() }).from(applications).where(eq(applications.status, "pending")),
     db
       .select({
@@ -55,14 +94,7 @@ export default async function DashboardHome() {
       .where(and(eq(applications.status, "approved"), gte(applications.departureDate, today)))
       .orderBy(asc(applications.arrivalDate))
       .limit(3),
-    // Two days more than shown, so partly read days at either end can be dropped
-    getEnergyUsage(9),
-    getBinCollections(today),
   ]);
-  const [nextBins, afterBins] = bins.status === "ok" ? bins.collections : [];
-  const bin = nextBins && binTask(nextBins, afterBins, today);
-  const electricity = energy.status === "ok" ? fullWeek(energy.electricity) : [];
-  const gas = energy.status === "ok" ? fullWeek(energy.gas) : [];
 
   return (
     <>
@@ -72,16 +104,9 @@ export default async function DashboardHome() {
           <h2 className="hand text-xl">Coming up</h2>
           <ul className="mt-2 divide-y divide-line">
             <li className="py-3">
-              {bin ? (
-                <>
-                  <p className="font-medium">{bin.task}</p>
-                  {bin.then && <p className="text-sm text-muted">{bin.then}</p>}
-                </>
-              ) : (
-                <a href={BINS_PAGE} target="_blank" rel="noopener noreferrer" className="font-medium hover:text-pillar">
-                  Check bin day on Hackney&apos;s site ↗
-                </a>
-              )}
+              <Suspense fallback={<p className="text-muted">Checking bin day…</p>}>
+                <BinDay today={today} />
+              </Suspense>
             </li>
             {pending > 0 && (
               <li className="py-3">
@@ -96,14 +121,9 @@ export default async function DashboardHome() {
         <div className="grid content-start gap-3">
           <Link href="/dashboard/energy" className="card block hover:border-tile">
             <h2 className="hand text-lg">Energy, last 7 days</h2>
-            {electricity.length > 0 || gas.length > 0 ? (
-              <div className="mt-2 flex flex-wrap gap-x-8 gap-y-2">
-                <MiniUsage title="electricity" days={electricity} />
-                <MiniUsage title="gas" days={gas} />
-              </div>
-            ) : (
-              <p className="mt-1 text-sm text-muted">Daily electricity and gas use from the smart meters</p>
-            )}
+            <Suspense fallback={<p className="mt-1 text-sm text-muted">Reading the meters…</p>}>
+              <EnergyWeek />
+            </Suspense>
           </Link>
           <section className="card">
             <h2 className="hand text-lg">Next guests</h2>

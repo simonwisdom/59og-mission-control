@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-import { isLoggedIn } from "@/lib/auth";
 import { Nameplate, SiteBar } from "../site-bar";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Housemate login" };
 
-export default async function LoginPage() {
-  // Already logged in, e.g. back via the home page's housemate link
-  if (await isLoggedIn()) redirect("/dashboard");
-
+// The proxy sends housemates who are already logged in straight to the dashboard
+export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <SiteBar awning={false} />
