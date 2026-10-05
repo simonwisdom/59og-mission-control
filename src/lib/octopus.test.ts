@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { KWH_PER_M3, metersFromAccount, productCode, rateAt, toDailyUsage, type Rate } from "./octopus";
+import { KWH_PER_M3, metersFromAccount, productCode, rateAt, toDailyUsage, windowStart, type Rate } from "./octopus";
 
 describe("metersFromAccount", () => {
   it("picks the current property's import electricity and gas meters", () => {
@@ -111,5 +111,14 @@ describe("toDailyUsage", () => {
   it("gives no cost for a day with a half hour it can't price", () => {
     const prices = { unitRates: [], standingCharges: [rate(50, "2026-01-01T00:00:00Z", null)] };
     expect(toDailyUsage(results, "electricity", "m3", prices)[0].cost).toBeNull();
+  });
+});
+
+describe("windowStart", () => {
+  it("gives the same start all hour, so repeat requests share a cache entry", () => {
+    const start = windowStart(Date.parse("2026-10-05T14:00:00Z"), 9);
+    expect(start.toISOString()).toBe("2026-09-26T14:00:00.000Z");
+    expect(windowStart(Date.parse("2026-10-05T14:59:59Z"), 9)).toEqual(start);
+    expect(windowStart(Date.parse("2026-10-05T15:00:00Z"), 9)).not.toEqual(start);
   });
 });

@@ -112,6 +112,14 @@ export function toDailyUsage(
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
+const HOUR_MS = 60 * 60 * 1000;
+
+// Start of the usage window. The fetch cache keys on the URL, so the start is rounded down to
+// the hour: within an hour every request asks for the same window and is served from the cache.
+export function windowStart(now: number, days: number) {
+  return new Date(Math.floor(now / HOUR_MS) * HOUR_MS - days * 24 * HOUR_MS);
+}
+
 async function octopusGet<T>(path: string, apiKey: string): Promise<T> {
   const response = await fetch(`${API}${path}`, {
     headers: { Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}` },
@@ -181,7 +189,7 @@ export async function getEnergyUsage(days = 30): Promise<EnergyUsage> {
   try {
     const account = await octopusGet<AccountResponse>(`/accounts/${encodeURIComponent(accountNumber)}/`, apiKey);
     const meters = metersFromAccount(account);
-    const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const from = windowStart(Date.now(), days);
     const usage = async (fuel: Fuel) => {
       const meter = meters.find((m) => m.fuel === fuel);
       return meter ? dailyUsage(meter, apiKey, from, days, gasUnit) : null;
