@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { isLoggedIn } from "@/lib/auth";
 import { Nameplate, SiteBar } from "../site-bar";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Housemate login" };
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  // Already logged in, e.g. back via the home page's housemate link
+  if (await isLoggedIn()) redirect("/dashboard");
+
   return (
     <div className="flex min-h-screen flex-col">
       <SiteBar awning={false} />
