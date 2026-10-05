@@ -129,7 +129,7 @@ export function UsefulLinks() {
     <>
       {groups.map((group) => (
         <section key={group.title} className="mt-10">
-          <h2 className="hand mb-4 flex items-center gap-2 text-xl">
+          <h2 className="section-title mb-4 flex items-center gap-2">
             {group.logo && <Image src={group.logo} alt="" width={24} height={24} className="size-6 rounded-full" />}
             {group.title}
           </h2>
@@ -153,12 +153,12 @@ export function UsefulLinks() {
                   href={link.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="card flex items-center gap-3 p-3 hover:border-accent"
+                  className="card flex items-center gap-3 border-2 border-ink/80 p-3 hover:border-tile"
                 >
                   {body}
                 </a>
               ) : (
-                <div key={link.name} className="card flex items-center gap-3 p-3 opacity-60">
+                <div key={link.name} className="card flex items-center gap-3 border-2 border-ink/80 p-3 opacity-50">
                   {body}
                 </div>
               );

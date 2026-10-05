@@ -4,8 +4,6 @@
 :root {
   --paper: #ffffff;
   --card: #fcfbf8;
-  --wall: #efebe4;
-  --wall-wash: rgb(250 245 236 / 0.5);
   --ink: #16325c;
   --ink-soft: #4f6380;
   --rule: #c9d3e0;
@@ -18,8 +16,6 @@
   :root {
     --paper: #0f1a2b;
     --card: #132036;
-    --wall: #0c1524;
-    --wall-wash: rgb(12 21 36 / 0.93);
     --ink: #e8edf5;
     --ink-soft: #a3b1c6;
     --rule: #2c3b52;
@@ -49,41 +45,49 @@
   --color-accent-fg: var(--paper);
 
   --font-serif: var(--font-literata), Georgia, serif;
-  --font-hand: var(--font-shantell), "Comic Sans MS", cursive;
+  --font-plate: var(--font-marcellus), Georgia, serif;
   --font-sign: var(--font-josefin), "Gill Sans", sans-serif;
-  --font-display: var(--font-playfair), Georgia, serif;
+  /* Older names: headings that used hand lettering or the display serif now use the plate face */
+  --font-hand: var(--font-plate);
+  --font-display: var(--font-plate);
 }
 
-/* Limewashed plaster wall behind every page. A fixed layer rather than background-attachment,
-   which iOS ignores; the wash colour tints it for dark mode. */
 body {
   color: var(--ink);
-  background: var(--wall);
-}
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background: linear-gradient(var(--wall-wash), var(--wall-wash)), url("/wall.jpg") center / cover;
+  background: var(--paper);
 }
 
 @layer components {
+  /* Headings, in the street-nameplate face */
   .hand {
-    @apply font-hand;
-    font-variation-settings: "INFM" 30, "BNCE" 0;
+    @apply font-plate tracking-[0.02em];
   }
-  /* Scrawled margin-note version of the hand lettering */
-  .scrawl {
-    @apply font-hand text-tile;
-    font-variation-settings: "INFM" 100, "BNCE" 40;
+  /* Page and section titles, set like the lettering on a nameplate */
+  .section-title {
+    @apply font-plate text-xl tracking-[0.06em] uppercase;
   }
   .card {
     @apply rounded-[2px] border border-rule bg-paper p-5;
   }
   .legend {
-    @apply font-hand text-lg;
-    font-variation-settings: "INFM" 30, "BNCE" 0;
+    @apply font-plate text-lg tracking-[0.02em];
+  }
+  /* Tile-blue and white awning stripes, as on a shop front */
+  .awning {
+    background: repeating-linear-gradient(90deg, var(--tile) 0 46px, var(--paper) 46px 92px) center / 92px 100%;
+  }
+  /* A white panel laid over the awning, edged in navy so it doesn't merge with the white stripes */
+  .awning-panel {
+    @apply border-2 border-ink bg-paper;
+    box-shadow: 0 0 0 8px var(--paper), 0 0 0 10px var(--ink);
+  }
+  /* The scalloped bottom edge of an awning, hung under the top bar */
+  .awning-edge {
+    @apply h-6 border-t border-ink/20;
+    background: repeating-linear-gradient(90deg, var(--tile) 0 23px, color-mix(in srgb, var(--tile) 12%, var(--paper)) 23px 46px);
+    mask:
+      linear-gradient(#000 0 0) top / 100% 12px no-repeat,
+      radial-gradient(circle at 11.5px 12px, #000 11.5px, #0000 12px) 0 0 / 23px 100% repeat-x;
   }
   .label {
     @apply mb-1 block font-medium;
@@ -101,10 +105,10 @@ body::before {
   .textbox {
     @apply block w-full resize-y rounded-[2px] border border-rule bg-paper/70 px-2.5 py-2 outline-none placeholder:text-ink-soft/50 focus:border-tile aria-invalid:border-danger;
   }
-  /* The postcard itself: white card stock resting against the wall, so its shadow is soft
+  /* The postcard itself: white card stock lying on the page, so its shadow is soft
      and falls mostly below it */
   .postcard {
-    /* A shadow is lost on the dark wall, so dark mode gets an edge instead */
+    /* A shadow is lost on the dark page, so dark mode gets an edge instead */
     @apply bg-card dark:border dark:border-rule;
     box-shadow:
       0 1px 2px rgb(0 0 0 / 0.08),
@@ -117,10 +121,15 @@ body::before {
       linear-gradient(#000 0 0) content-box,
       radial-gradient(circle at center, #0000 2.6px, #000 3px) -4px -4px / 8px 8px padding-box;
   }
-  /* London street-name sign: enamel plate with a white margin inside a navy keyline */
+  /* London street nameplate: carved capitals on a white plate, a navy keyline inside a white
+     margin, and the borough in red underneath. Enamel doesn't change colour at night, so the
+     plate keeps its light-mode colours in dark mode. */
   .street-sign {
-    @apply inline-block border-[3px] border-ink bg-paper px-5 py-2 text-center font-sign font-bold tracking-[0.06em] uppercase;
-    box-shadow: 0 0 0 5px var(--paper), 0 0 0 6.5px var(--ink), 0 8px 20px rgb(0 0 0 / 0.35);
+    @apply inline-block border-[3px] border-[#16325c] bg-white px-6 pt-3 pb-2 text-center font-plate tracking-[0.06em] text-[#16325c] uppercase;
+    box-shadow: 0 0 0 5px #fff, 0 0 0 6.5px #16325c;
+  }
+  .street-sign .borough {
+    @apply mt-1 block text-[0.4em] tracking-[0.08em] text-[#c2402a];
   }
   .error {
     @apply mt-1 block text-sm text-danger;

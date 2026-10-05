@@ -12,15 +12,15 @@ export default async function DashboardHome() {
 
   return (
     <>
-      <h1 className="hand mb-6 text-2xl">House services</h1>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Link href="/dashboard/applications" className="card block hover:border-accent">
+      <h1 className="section-title mb-5">House services</h1>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Link href="/dashboard/applications" className="card block border-2 border-ink/80 hover:border-tile">
           <h2 className="hand text-lg">Guest applications</h2>
           <p className="mt-1 text-sm text-muted">
             {pending === 0 ? "Nothing waiting for review" : `${pending} waiting for review`}
           </p>
         </Link>
-        <Link href="/dashboard/energy" className="card block hover:border-accent">
+        <Link href="/dashboard/energy" className="card block border-2 border-ink/80 hover:border-tile">
           <h2 className="hand text-lg">Energy</h2>
           <p className="mt-1 text-sm text-muted">Daily electricity and gas use from the smart meters</p>
         </Link>
