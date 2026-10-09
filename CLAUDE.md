@@ -1,3 +1,5 @@
+To see a logged-in page, run `scripts/preview.sh [PAGE] [OUT_PNG] [WIDTH]` (e.g. `scripts/preview.sh /energy out.png 390`): it starts its own dev server, logs in with a signed cookie, saves a screenshot and stops the server. Don't hand-roll Chrome calls or cookies.
+
 @AGENTS.md
 
 ## Worktrees
