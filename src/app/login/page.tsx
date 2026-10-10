@@ -5,7 +5,8 @@ import { LoginForm } from "./login-form";
 export const metadata: Metadata = { title: "Housemate login" };
 
 // The proxy sends housemates who are already logged in straight to the dashboard
-export default function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+  const { next } = await searchParams;
   return (
     <div className="flex min-h-screen flex-col">
       <SiteBar awning={false} />
@@ -15,7 +16,7 @@ export default function LoginPage() {
             <Nameplate as="p" className="text-xl sm:text-2xl" />
             <h1 className="hand mt-8 mb-6 text-xl">For housemates only</h1>
           </div>
-          <LoginForm />
+          <LoginForm next={next} />
         </div>
       </main>
     </div>

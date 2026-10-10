@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, getSessionSecret } from "@/lib/auth";
+import { safeNextPath } from "@/lib/next-path";
 import { verifySessionToken } from "@/lib/session";
 
 export function proxy(request: NextRequest) {
@@ -7,10 +8,14 @@ export function proxy(request: NextRequest) {
   const loggedIn = !!token && verifySessionToken(token, getSessionSecret());
   // Housemates who are already logged in skip the password, before the login page renders
   if (request.nextUrl.pathname === "/login") {
-    return loggedIn ? NextResponse.redirect(new URL("/dashboard", request.url)) : NextResponse.next();
+    const next = safeNextPath(request.nextUrl.searchParams.get("next"));
+    return loggedIn ? NextResponse.redirect(new URL(next, request.url)) : NextResponse.next();
   }
   if (!loggedIn) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    // Remember the page so login can return to it, e.g. an application opened from a notification
+    const login = new URL("/login", request.url);
+    login.searchParams.set("next", request.nextUrl.pathname + request.nextUrl.search);
+    return NextResponse.redirect(login);
   }
   return NextResponse.next();
 }

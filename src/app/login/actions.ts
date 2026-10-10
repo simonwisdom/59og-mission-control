@@ -3,6 +3,7 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, SESSION_TTL_MS, getSessionSecret } from "@/lib/auth";
+import { safeNextPath } from "@/lib/next-path";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { createSessionToken, passwordMatches } from "@/lib/session";
 
@@ -33,7 +34,7 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     path: "/",
     expires: new Date(expiresAt),
   });
-  redirect("/dashboard");
+  redirect(safeNextPath(formData.get("next")));
 }
 
 export async function logout() {
