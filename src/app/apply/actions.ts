@@ -1,8 +1,10 @@
 "use server";
 
+import { after } from "next/server";
 import { db } from "@/db";
 import { applications } from "@/db/schema";
 import { parseApplication, type FieldErrors } from "@/lib/application-schema";
+import { notifyNewApplication } from "@/lib/notify";
 
 export type ApplyState =
   | { status: "idle" }
@@ -21,6 +23,12 @@ export async function submitApplication(_prev: ApplyState, formData: FormData): 
     return { status: "error", errors: result.errors, values };
   }
 
-  await db.insert(applications).values(result.data);
+  const [saved] = await db.insert(applications).values(result.data).returning();
+  // After the response, so a slow or failing ntfy never holds up or breaks the guest's submission.
+  after(() =>
+    notifyNewApplication(saved).catch((error) =>
+      console.error(`Couldn't send the ntfy notification for application ${saved.id}:`, error),
+    ),
+  );
   return { status: "submitted" };
 }

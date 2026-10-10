@@ -46,6 +46,7 @@ openssl rand -base64 48     # SESSION_SECRET
    - `HOUSE_PASSWORD`: long and random, shared with housemates
    - `SESSION_SECRET`: 32+ random characters
    - `OCTOPUS_API_KEY` and `OCTOPUS_ACCOUNT_NUMBER` (optional): from the Octopus website under Personal details > API access. Without them the Energy page just says what to set.
+   - `NTFY_TOPIC` and `APP_URL` (optional): phone notifications for new applications. Housemates install the free ntfy app and subscribe to the topic. Anyone who knows the topic can read it, so make it long and random (`olive-grove-` plus `openssl rand -hex 8`). The message only has the guest's first name, dates and party size. `APP_URL` is the site's public address, so tapping the notification opens the application.
 4. Generate a public domain under the service's Networking settings.
 
 `npm start` applies any pending migrations before starting the server, so schema changes apply automatically on deploy.
