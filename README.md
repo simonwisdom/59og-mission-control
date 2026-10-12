@@ -53,7 +53,7 @@ openssl rand -base64 48     # SESSION_SECRET
 
 ## Security notes
 
-- Housemates log in with the shared password or a personal login link, made at `/dashboard/login-links`. Either way the session lasts a year from their last visit.
+- Housemates log in with the shared password or a login link, made at `/dashboard/login-links` with a QR code to share. Either way the session lasts a year from their last visit.
 - When someone moves out, turn off their login link (that logs out every device that used it) and change `HOUSE_PASSWORD`. Password sessions can't be ended one by one: to log everyone out, change `SESSION_SECRET`.
 - Login links store only a hash of their key, so a copy of the database can't be used to log in. Anyone holding the link itself can, so send it privately.
 - Failed logins are limited to 5 per IP every 15 minutes (in memory, so the count resets on redeploy).

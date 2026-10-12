@@ -18,8 +18,10 @@ export default async function LoginLinksPage() {
     <>
       <h1 className="hand mb-2 text-2xl">Login links</h1>
       <p className="mb-6 max-w-2xl text-muted">
-        A personal link logs a housemate in without the password. They open it once on each phone or laptop and stay
-        logged in, as long as they visit at least once a year. Turning a link off logs out every device that used it.
+        A login link logs housemates in without the password. Make one for the whole house and share its QR code, or
+        one each. They open it once on each phone or laptop and stay logged in, as long as they visit at least once a
+        year. Turning a link off logs out every device that used it, so when someone moves out, turn the link off and
+        share a new one.
       </p>
       <NewLinkForm />
       {links.length > 0 && (
