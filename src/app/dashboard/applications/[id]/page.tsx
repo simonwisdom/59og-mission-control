@@ -1,14 +1,17 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { applications, notes } from "@/db/schema";
+import { requireSession } from "@/lib/auth";
 import { REVIEWER_COOKIE, STATUSES } from "@/lib/review";
 import { addNote, setStatus } from "../actions";
 import { StatusBadge } from "../../status-badge";
 import { formatDate } from "@/lib/format";
 import { FIELD_LABELS, formatPartySize } from "@/lib/field-labels";
+import { DeleteButton } from "./delete-button";
 import { ShareButtons } from "./share-buttons";
 
 function Detail({ label, value }: { label: string; value: React.ReactNode }) {
@@ -19,6 +22,16 @@ function Detail({ label, value }: { label: string; value: React.ReactNode }) {
       <dd className="whitespace-pre-wrap">{value}</dd>
     </div>
   );
+}
+
+// The guest's name is private, so check the session here too rather than rely on the layout
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  await requireSession();
+  const id = Number((await params).id);
+  const [app] = Number.isInteger(id)
+    ? await db.select({ name: applications.name }).from(applications).where(eq(applications.id, id))
+    : [];
+  return { title: app ? `${app.name}'s application` : "Application" };
 }
 
 export default async function ApplicationPage({ params }: { params: Promise<{ id: string }> }) {
@@ -104,6 +117,10 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
             </div>
           </form>
         </section>
+      </div>
+
+      <div className="mt-8 border-t border-line pt-4">
+        <DeleteButton applicationId={app.id} name={app.name} />
       </div>
     </>
   );

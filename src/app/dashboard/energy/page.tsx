@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import { getEnergyUsage } from "@/lib/octopus";
 import { UsageChart } from "./usage-chart";
+
+export const metadata: Metadata = { title: "Energy" };
 
 export default async function EnergyPage() {
   const energy = await getEnergyUsage(30);

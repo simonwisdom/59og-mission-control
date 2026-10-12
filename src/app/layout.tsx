@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Josefin_Sans, Literata, Marcellus } from "next/font/google";
 import "./globals.css";
 
@@ -24,10 +24,16 @@ const josefin = Josefin_Sans({
 });
 
 export const metadata: Metadata = {
+  // Link previews need the image's full address; APP_URL is the site's public address on Railway
+  metadataBase: process.env.APP_URL ? new URL(process.env.APP_URL) : undefined,
   title: { default: "The Olive Grove", template: "%s · The Olive Grove" },
-  description: "House services for The Olive Grove",
+  description: "A shared house in Finsbury Park, London",
+  openGraph: { siteName: "The Olive Grove", locale: "en_GB", type: "website" },
   robots: { index: false },
 };
+
+// Tints the browser bar navy to match the top bar
+export const viewport: Viewport = { themeColor: "#16325c" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

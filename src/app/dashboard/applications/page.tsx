@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
@@ -5,6 +6,8 @@ import { applications } from "@/db/schema";
 import { STATUSES, isStatus } from "@/lib/review";
 import { StatusBadge } from "../status-badge";
 import { formatDate } from "@/lib/format";
+
+export const metadata: Metadata = { title: "Guest applications" };
 
 export default async function ApplicationsPage({
   searchParams,

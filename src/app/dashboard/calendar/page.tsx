@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { and, asc, gte, lte, ne } from "drizzle-orm";
@@ -6,6 +7,8 @@ import { applications } from "@/db/schema";
 import { getSessionSecret } from "@/lib/auth";
 import { calendarFeedToken, isMonth, monthWeeks, shiftMonth, stayTitle } from "@/lib/guest-calendar";
 import { CopyLink } from "./copy-link";
+
+export const metadata: Metadata = { title: "Guest calendar" };
 
 const londonToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date());
 const monthName = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });

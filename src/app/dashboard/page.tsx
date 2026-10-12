@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { and, asc, count, eq, gte } from "drizzle-orm";
@@ -8,6 +9,8 @@ import { getBinCollections, type Collection } from "@/lib/hackney-bins";
 import { getEnergyUsage, type DailyUsage } from "@/lib/octopus";
 import { MiniUsage } from "./energy/mini-usage";
 import { UsefulLinks } from "./useful-links";
+
+export const metadata: Metadata = { title: "Dashboard" };
 
 // Guest and bin dates are London calendar days, so compare against today's date there
 const londonToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date());
