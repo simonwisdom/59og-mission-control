@@ -8,6 +8,7 @@ import { formatDate } from "@/lib/format";
 import { getBinCollections, type Collection } from "@/lib/hackney-bins";
 import { getEnergyUsage, type DailyUsage } from "@/lib/octopus";
 import { MiniUsage } from "./energy/mini-usage";
+import { PhoneSetup } from "./phone-setup";
 import { UsefulLinks } from "./useful-links";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -157,13 +158,7 @@ export default async function DashboardHome() {
         </div>
       </div>
       <UsefulLinks />
-      <p className="mt-8 text-sm text-muted">
-        Setting up a new phone?{" "}
-        <Link href="/dashboard/login-links" className="underline hover:text-pillar">
-          Make a login link
-        </Link>{" "}
-        so they don&apos;t need the password.
-      </p>
+      <PhoneSetup />
     </>
   );
 }
