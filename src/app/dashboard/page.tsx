@@ -126,7 +126,12 @@ export default async function DashboardHome() {
             </Suspense>
           </Link>
           <section className="card">
-            <h2 className="hand text-lg">Next guests</h2>
+            <div className="flex items-baseline justify-between gap-2">
+              <h2 className="hand text-lg">Next guests</h2>
+              <Link href="/dashboard/calendar" className="text-sm text-muted hover:text-pillar">
+                Calendar →
+              </Link>
+            </div>
             {guests.length === 0 ? (
               <p className="mt-1 text-sm text-muted">No one booked</p>
             ) : (
