@@ -39,6 +39,15 @@ export function monthWeeks(month: string) {
   return weeks;
 }
 
+// A run of Monday-first weeks starting with the week that holds the day ("2026-10-12")
+export function weeksFrom(date: string, count: number) {
+  const day = Date.parse(`${date}T00:00:00Z`);
+  const monday = day - ((new Date(day).getUTCDay() + 6) % 7) * DAY_MS;
+  return Array.from({ length: count }, (_, week) =>
+    Array.from({ length: 7 }, (_, i) => new Date(monday + (week * 7 + i) * DAY_MS).toISOString().slice(0, 10)),
+  );
+}
+
 // "2026-10" plus or minus a number of months
 export function shiftMonth(month: string, by: number) {
   const [year, monthNumber] = month.split("-").map(Number);

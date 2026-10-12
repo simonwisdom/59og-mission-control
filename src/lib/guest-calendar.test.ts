@@ -7,6 +7,7 @@ import {
   monthWeeks,
   nextDay,
   shiftMonth,
+  weeksFrom,
   type Stay,
 } from "./guest-calendar";
 
@@ -48,6 +49,16 @@ describe("dates", () => {
     expect(weeks[0][0]).toBe("2026-09-28");
     expect(weeks[0][3]).toBe("2026-10-01");
     expect(weeks.at(-1)?.at(-1)).toBe("2026-11-01");
+  });
+
+  it("runs weeks on from the week holding a day", () => {
+    // 2026-11-01 is a Sunday, so its week starts the Monday before
+    const weeks = weeksFrom("2026-11-01", 5);
+    expect(weeks).toHaveLength(5);
+    expect(weeks[0][0]).toBe("2026-10-26");
+    expect(weeks[0][6]).toBe("2026-11-01");
+    expect(weeks.at(-1)?.at(-1)).toBe("2026-11-29");
+    expect(weeksFrom("2026-10-12", 1)[0][0]).toBe("2026-10-12");
   });
 
   it("accepts only YYYY-MM months", () => {

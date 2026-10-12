@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { and, asc, count, eq, gte } from "drizzle-orm";
+import { and, asc, count, eq, gt, gte, lte, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { applications } from "@/db/schema";
 import { formatDate } from "@/lib/format";
+import { weeksFrom } from "@/lib/guest-calendar";
 import { getBinCollections, type Collection } from "@/lib/hackney-bins";
 import { getEnergyUsage, type DailyUsage } from "@/lib/octopus";
+import { StayLegend, StayWeeks } from "./calendar/stay-weeks";
 import { MiniUsage } from "./energy/mini-usage";
 import { PhoneSetup } from "./phone-setup";
 import { UsefulLinks } from "./useful-links";
@@ -20,6 +22,8 @@ const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "long", timeZone: "U
 const dayAndDate = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "short", timeZone: "UTC" });
 const BINS_PAGE = "https://www.hackney.gov.uk/rubbish-and-recycling/rubbish-recycling-and-food-waste-collections/check-your-collection-day";
 const DAY_MS = 86_400_000;
+// This week and the four after it
+const CALENDAR_WEEKS = 5;
 
 // ["Recycling", "Food waste", "Rubbish"] → "recycling, food waste and rubbish"
 function binList(bins: string[]) {
@@ -84,20 +88,36 @@ async function EnergyWeek() {
 
 export default async function DashboardHome() {
   const today = londonToday();
-  const [[{ pending }], guests] = await Promise.all([
+  const weeks = weeksFrom(today, CALENDAR_WEEKS);
+  const [firstDay, lastDay] = [weeks[0][0], weeks.at(-1)!.at(-1)!];
+  const stayFields = {
+    id: applications.id,
+    name: applications.name,
+    partySize: applications.partySize,
+    arrivalDate: applications.arrivalDate,
+    departureDate: applications.departureDate,
+    status: applications.status,
+  };
+  const [[{ pending }], stays, [later]] = await Promise.all([
     db.select({ pending: count() }).from(applications).where(eq(applications.status, "pending")),
     db
-      .select({
-        id: applications.id,
-        name: applications.name,
-        partySize: applications.partySize,
-        arrivalDate: applications.arrivalDate,
-        departureDate: applications.departureDate,
-      })
+      .select(stayFields)
       .from(applications)
-      .where(and(eq(applications.status, "approved"), gte(applications.departureDate, today)))
+      .where(
+        and(
+          ne(applications.status, "declined"),
+          lte(applications.arrivalDate, lastDay),
+          gte(applications.departureDate, firstDay),
+        ),
+      )
+      .orderBy(asc(applications.arrivalDate)),
+    // The first confirmed guest after the weeks shown, so a quiet stretch still says who's next
+    db
+      .select(stayFields)
+      .from(applications)
+      .where(and(eq(applications.status, "approved"), gt(applications.arrivalDate, lastDay)))
       .orderBy(asc(applications.arrivalDate))
-      .limit(3),
+      .limit(1),
   ]);
 
   return (
@@ -130,29 +150,22 @@ export default async function DashboardHome() {
             </Suspense>
           </Link>
           <section className="card">
-            <div className="flex items-baseline justify-between gap-2">
-              <h2 className="hand text-lg">Next guests</h2>
+            <div className="mb-3 flex items-baseline justify-between gap-2">
+              <h2 className="hand text-lg">Guests</h2>
               <Link href="/dashboard/calendar" className="text-sm text-muted hover:text-pillar">
-                Calendar →
+                Full calendar →
               </Link>
             </div>
-            {guests.length === 0 ? (
-              <p className="mt-1 text-sm text-muted">No one booked</p>
-            ) : (
-              <ul className="mt-1 space-y-1">
-                {guests.map((guest) => (
-                  <li key={guest.id}>
-                    <Link href={`/dashboard/applications/${guest.id}`} className="font-medium hover:text-pillar">
-                      {guest.name}
-                    </Link>
-                    {guest.partySize > 1 && <span className="text-muted"> and {guest.partySize - 1} more</span>}
-                    <span className="block text-sm text-muted">
-                      {guest.arrivalDate <= today ? "Here now, until " : `${formatDate(guest.arrivalDate)} to `}
-                      {formatDate(guest.departureDate)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+            <StayWeeks weeks={weeks} stays={stays} today={today} compact />
+            <StayLegend className="mt-2 text-xs" />
+            {later && (
+              <p className="mt-2 text-sm text-muted">
+                After that:{" "}
+                <Link href={`/dashboard/applications/${later.id}`} className="font-medium text-foreground hover:text-pillar">
+                  {later.name}
+                </Link>
+                , {formatDate(later.arrivalDate)}
+              </p>
             )}
           </section>
         </div>

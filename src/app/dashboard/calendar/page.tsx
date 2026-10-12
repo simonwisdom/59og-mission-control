@@ -5,14 +5,14 @@ import { and, asc, gte, lte, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { applications } from "@/db/schema";
 import { getSessionSecret } from "@/lib/auth";
-import { calendarFeedToken, isMonth, monthWeeks, shiftMonth, stayTitle } from "@/lib/guest-calendar";
+import { calendarFeedToken, isMonth, monthWeeks, shiftMonth } from "@/lib/guest-calendar";
 import { CopyLink } from "./copy-link";
+import { StayLegend, StayWeeks } from "./stay-weeks";
 
 export const metadata: Metadata = { title: "Guest calendar" };
 
 const londonToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date());
 const monthName = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 // Calendar apps need the full address of the feed, so build it from APP_URL or this request
 async function siteUrl() {
@@ -74,66 +74,8 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
         </nav>
       </div>
 
-      <div className="mb-3 flex gap-4 text-sm text-muted">
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-5 rounded-[2px] bg-tile" /> Confirmed
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-5 rounded-[2px] border border-dashed border-amber-600 bg-amber-100 dark:bg-amber-900/40" />{" "}
-          Requested
-        </span>
-      </div>
-
-      <div className="overflow-hidden rounded-[2px] border border-line">
-        <div className="grid grid-cols-7 border-b border-line bg-card text-center text-xs text-muted">
-          {WEEKDAYS.map((day) => (
-            <div key={day} className="py-1.5">
-              {day}
-            </div>
-          ))}
-        </div>
-        {weeks.map((week) => {
-          const weekStays = stays.filter((s) => s.arrivalDate <= week[6] && s.departureDate >= week[0]);
-          return (
-            <div key={week[0]} className="grid min-h-20 grid-cols-7 content-start gap-y-1 border-b border-line pb-2 last:border-b-0">
-              {week.map((day, i) => (
-                <div
-                  key={day}
-                  style={{ gridColumn: i + 1, gridRow: 1 }}
-                  className={`px-1.5 pt-1 text-xs ${day.slice(0, 7) === month ? "" : "text-muted/50"}`}
-                >
-                  <span className={day === today ? "rounded-full bg-pillar px-1.5 py-0.5 font-medium text-white" : ""}>
-                    {Number(day.slice(8))}
-                  </span>
-                </div>
-              ))}
-              {weekStays.map((stay, row) => {
-                const start = Math.max(0, week.indexOf(stay.arrivalDate));
-                const endIndex = week.indexOf(stay.departureDate);
-                const end = endIndex === -1 ? 6 : endIndex;
-                const confirmed = stay.status === "approved";
-                return (
-                  <Link
-                    key={stay.id}
-                    href={`/dashboard/applications/${stay.id}`}
-                    title={stayTitle(stay)}
-                    style={{ gridColumn: `${start + 1} / ${end + 2}`, gridRow: row + 2 }}
-                    className={`mx-0.5 truncate rounded-[2px] px-1.5 py-0.5 text-xs font-medium ${
-                      confirmed
-                        ? "bg-tile text-white hover:opacity-90"
-                        : "border border-dashed border-amber-600 bg-amber-100 text-amber-900 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-200"
-                    }`}
-                  >
-                    {stay.arrivalDate < week[0] && "… "}
-                    {confirmed ? stay.name : `${stay.name}?`}
-                    {stay.partySize > 1 && ` +${stay.partySize - 1}`}
-                  </Link>
-                );
-              })}
-            </div>
-          );
-        })}
-      </div>
+      <StayLegend className="mb-3 text-sm" />
+      <StayWeeks weeks={weeks} stays={stays} today={today} month={month} />
 
       <section className="card mt-8">
         <h2 className="hand text-lg">Add to your own calendar</h2>
