@@ -2,10 +2,10 @@
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { SESSION_COOKIE, SESSION_TTL_MS, getSessionSecret } from "@/lib/auth";
+import { SESSION_COOKIE, sessionCookie } from "@/lib/auth";
 import { safeNextPath } from "@/lib/next-path";
 import { createRateLimiter } from "@/lib/rate-limit";
-import { createSessionToken, passwordMatches } from "@/lib/session";
+import { passwordMatches } from "@/lib/session";
 
 const limiter = createRateLimiter({ max: 5, windowMs: 15 * 60 * 1000 });
 
@@ -26,14 +26,7 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     return { error: "Wrong password." };
   }
 
-  const expiresAt = Date.now() + SESSION_TTL_MS;
-  (await cookies()).set(SESSION_COOKIE, createSessionToken(getSessionSecret(), expiresAt), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    expires: new Date(expiresAt),
-  });
+  (await cookies()).set(sessionCookie(null));
   redirect(safeNextPath(formData.get("next")));
 }
 

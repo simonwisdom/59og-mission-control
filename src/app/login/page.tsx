@@ -5,8 +5,8 @@ import { LoginForm } from "./login-form";
 export const metadata: Metadata = { title: "Housemate login" };
 
 // The proxy sends housemates who are already logged in straight to the dashboard
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
-  const { next } = await searchParams;
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; link?: string }> }) {
+  const { next, link } = await searchParams;
   return (
     <div className="flex min-h-screen flex-col">
       <SiteBar awning={false} />
@@ -16,6 +16,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             <Nameplate as="p" className="text-xl sm:text-2xl" />
             <h1 className="hand mt-8 mb-6 text-xl">For housemates only</h1>
           </div>
+          {link === "off" && (
+            <p className="mb-4 text-sm text-muted">
+              That login link has been turned off. Ask a housemate for a new one, or use the house password.
+            </p>
+          )}
           <LoginForm next={next} />
         </div>
       </main>

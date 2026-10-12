@@ -47,6 +47,17 @@ export const notes = pgTable("notes", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
-export type Application = typeof applications.$inferSelect;
+// Personal login links, one per housemate's set of devices. Only a hash of each link's key is
+// stored. Deleting a row turns the link off and logs out every device that used it.
+export const loginLinks = pgTable("login_links", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  keyHash: text("key_hash").notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  // Updated when the link is opened and when its session is renewed, at most daily
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+});
+
+export type Application =typeof applications.$inferSelect;
 export type Note = typeof notes.$inferSelect;
 export type ApplicationStatus = (typeof applicationStatus.enumValues)[number];

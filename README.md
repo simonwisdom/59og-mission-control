@@ -3,7 +3,7 @@
 A dashboard for running house services:
 
 - `/apply`: public form where potential guests apply to stay
-- `/dashboard`: housemates log in with the shared house password. From there:
+- `/dashboard`: housemates log in with the shared house password or a personal login link. From there:
   - **Guest applications**: review applications, leave notes, and approve or decline
   - **Energy**: daily electricity and gas use from the Octopus smart meters
   - Links to the house accounts (Sainsbury's, Octopus, Thames Water, Hyperoptic, Hackney permits and bike hangars)
@@ -53,7 +53,9 @@ openssl rand -base64 48     # SESSION_SECRET
 
 ## Security notes
 
-- There's one shared password. Change `HOUSE_PASSWORD` when someone moves out. To log everyone out immediately, also change `SESSION_SECRET`.
+- Housemates log in with the shared password or a personal login link, made at `/dashboard/login-links`. Either way the session lasts a year from their last visit.
+- When someone moves out, turn off their login link (that logs out every device that used it) and change `HOUSE_PASSWORD`. Password sessions can't be ended one by one: to log everyone out, change `SESSION_SECRET`.
+- Login links store only a hash of their key, so a copy of the database can't be used to log in. Anyone holding the link itself can, so send it privately.
 - Failed logins are limited to 5 per IP every 15 minutes (in memory, so the count resets on redeploy).
 - Every dashboard page and server action checks the session itself; `src/proxy.ts` is only an early redirect.
 - Auth lives in `src/lib/auth.ts`, `src/lib/session.ts` and `src/app/login/`, so moving to per-person Google sign-in later only touches those.
