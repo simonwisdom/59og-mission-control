@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { applications, notes } from "@/db/schema";
@@ -16,6 +17,14 @@ export async function setStatus(applicationId: number, formData: FormData) {
 
   await db.update(applications).set({ status }).where(eq(applications.id, applicationId));
   revalidatePath("/dashboard", "layout");
+}
+
+// Notes go with it (the foreign key cascades)
+export async function deleteApplication(applicationId: number) {
+  await requireSession();
+  await db.delete(applications).where(eq(applications.id, applicationId));
+  revalidatePath("/dashboard", "layout");
+  redirect("/dashboard/applications");
 }
 
 export async function addNote(applicationId: number, formData: FormData) {
