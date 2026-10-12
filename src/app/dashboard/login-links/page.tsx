@@ -3,6 +3,7 @@ import { asc } from "drizzle-orm";
 import { db } from "@/db";
 import { loginLinks } from "@/db/schema";
 import { formatDate } from "@/lib/format";
+import { Crumbs } from "../crumbs";
 import { deleteLink } from "./actions";
 import { NewLinkForm } from "./new-link-form";
 
@@ -16,6 +17,7 @@ export default async function LoginLinksPage() {
 
   return (
     <>
+      <Crumbs />
       <h1 className="hand mb-2 text-2xl">Login links</h1>
       <p className="mb-6 max-w-2xl text-muted">
         A login link logs housemates in without the password. Make one for the whole house and share its QR code, or

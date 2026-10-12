@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { applications } from "@/db/schema";
 import { getSessionSecret } from "@/lib/auth";
 import { calendarFeedToken, isMonth, monthWeeks, shiftMonth } from "@/lib/guest-calendar";
+import { Crumbs } from "../crumbs";
 import { CopyLink } from "./copy-link";
 import { StayLegend, StayWeeks } from "./stay-weeks";
 
@@ -56,6 +57,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
 
   return (
     <>
+      <Crumbs />
       <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
         <h1 className="section-title">Guest calendar</h1>
         <nav className="flex items-center gap-2 text-sm">
@@ -74,7 +76,12 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
         </nav>
       </div>
 
-      <StayLegend className="mb-3 text-sm" />
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+        <StayLegend />
+        <Link href="/dashboard/applications" className="text-muted hover:text-pillar">
+          All applications →
+        </Link>
+      </div>
       <StayWeeks weeks={weeks} stays={stays} today={today} month={month} />
 
       <section className="card mt-8">

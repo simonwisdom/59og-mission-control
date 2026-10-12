@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getEnergyUsage } from "@/lib/octopus";
+import { Crumbs } from "../crumbs";
 import { UsageChart } from "./usage-chart";
 
 export const metadata: Metadata = { title: "Energy" };
@@ -9,6 +10,7 @@ export default async function EnergyPage() {
 
   return (
     <>
+      <Crumbs />
       <h1 className="hand mb-6 text-2xl">Energy</h1>
 
       {energy.status === "not-configured" && (

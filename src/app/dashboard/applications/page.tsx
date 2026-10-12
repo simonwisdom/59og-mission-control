@@ -4,6 +4,7 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { applications } from "@/db/schema";
 import { STATUSES, isStatus } from "@/lib/review";
+import { Crumbs } from "../crumbs";
 import { StatusBadge } from "../status-badge";
 import { formatDate } from "@/lib/format";
 
@@ -27,11 +28,17 @@ export default async function ApplicationsPage({
 
   return (
     <>
+      <Crumbs />
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 className="hand text-2xl">Guest applications</h1>
-        <Link href="/apply" className="text-sm text-accent hover:underline" target="_blank">
-          Open public form ↗
-        </Link>
+        <div className="flex gap-4 text-sm">
+          <Link href="/dashboard/calendar" className="text-accent hover:underline">
+            Calendar →
+          </Link>
+          <Link href="/apply" className="text-accent hover:underline" target="_blank">
+            Open public form ↗
+          </Link>
+        </div>
       </div>
 
       <nav className="mb-4 flex gap-2">

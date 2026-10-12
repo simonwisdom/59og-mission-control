@@ -7,7 +7,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   await requireSession();
   return (
     <div className="min-h-screen">
-      <SiteBar>
+      <SiteBar home="/dashboard">
         <Link href="/dashboard" className="hover:underline">Dashboard</Link>
         <form action={logout}>
           <button type="submit" className="cursor-pointer uppercase hover:underline">

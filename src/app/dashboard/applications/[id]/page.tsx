@@ -8,6 +8,7 @@ import { applications, notes } from "@/db/schema";
 import { requireSession } from "@/lib/auth";
 import { REVIEWER_COOKIE, STATUSES } from "@/lib/review";
 import { addNote, setStatus } from "../actions";
+import { Crumbs } from "../../crumbs";
 import { StatusBadge } from "../../status-badge";
 import { formatDate } from "@/lib/format";
 import { FIELD_LABELS, formatPartySize } from "@/lib/field-labels";
@@ -52,16 +53,17 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
 
   return (
     <>
-      <Link href="/dashboard/applications" className="text-sm text-muted hover:underline">
-        ← All applications
-      </Link>
+      <Crumbs trail={[{ label: "Applications", href: "/dashboard/applications" }]} />
 
-      <div className="mt-3 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div>
           <h1 className="hand text-2xl">{app.name}</h1>
           <p className="text-muted">
             {formatDate(app.arrivalDate)} to {formatDate(app.departureDate)} ·{" "}
-            {formatPartySize(app.partySize)}
+            {formatPartySize(app.partySize)} ·{" "}
+            <Link href={`/dashboard/calendar?month=${app.arrivalDate.slice(0, 7)}`} className="underline underline-offset-2 hover:text-pillar">
+              See on calendar
+            </Link>
           </p>
         </div>
         <form action={setStatus.bind(null, app.id)} className="flex flex-wrap items-center gap-2">
