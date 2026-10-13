@@ -3,22 +3,30 @@
 # signs a session cookie with SESSION_SECRET from .env, saves a full-page PNG
 # and stops the server.
 #
-#   scripts/preview.sh [PAGE] [OUT_PNG] [WIDTH]
+#   scripts/preview.sh [PAGE] [OUT_PNG] [WIDTH] [SELECTOR]
 #
 # PAGE is under /dashboard: "/" (default) is the dashboard home, "/energy" is
-# /dashboard/energy. WIDTH defaults to 1280; use 390 for a phone.
+# /dashboard/energy. The public pages /apply and /login are taken as they are.
+# WIDTH defaults to 1280; use 390 for a phone. SELECTOR (a CSS selector, e.g.
+# "fieldset") crops the shot to the first element it matches.
 set -euo pipefail
 
 page="${1:-/}"
 out="${2:-${TMPDIR:-/tmp}/59og-preview.png}"
 width="${3:-1280}"
+selector="${4:-}"
 
 cd "$(dirname "$0")/.."
 [ -f .env ] || { echo "No .env here; see CLAUDE.md (Worktrees)" >&2; exit 1; }
 
 page="/${page#/}"
-page="${page#/dashboard}"
-url_path="/dashboard${page%/}"
+case "$page" in
+  /apply* | /login*) url_path="$page" ;;
+  *)
+    page="${page#/dashboard}"
+    url_path="/dashboard${page%/}"
+    ;;
+esac
 
 port=$(node -e 'const s=require("net").createServer().listen(0,()=>{console.log(s.address().port);s.close()})')
 log="${TMPDIR:-/tmp}/59og-preview-$port.log"
@@ -33,4 +41,4 @@ for _ in $(seq 60); do
   sleep 1
 done
 
-node --env-file=.env --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/preview-shot.mjs "http://localhost:$port$url_path" "$out" "$width"
+node --env-file=.env --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/preview-shot.mjs "http://localhost:$port$url_path" "$out" "$width" ${selector:+"$selector"}
