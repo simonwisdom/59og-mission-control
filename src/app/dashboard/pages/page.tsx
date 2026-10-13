@@ -9,7 +9,9 @@ import { createPage } from "./actions";
 
 export const metadata: Metadata = { title: "Pages" };
 
-export default async function PagesList() {
+// ?new, from the dashboard's "New page" tile, puts the cursor straight in the title box
+export default async function PagesList({ searchParams }: { searchParams: Promise<{ new?: string }> }) {
+  const startNew = (await searchParams).new !== undefined;
   const list = await db
     .select({
       id: pages.id,
@@ -33,7 +35,7 @@ export default async function PagesList() {
       <form action={createPage} className="card flex flex-wrap items-end gap-2">
         <label className="min-w-0 flex-1">
           <span className="label">New page</span>
-          <input name="title" required maxLength={200} placeholder="e.g. House rules" className="input" />
+          <input name="title" required maxLength={200} placeholder="e.g. House rules" autoFocus={startNew} className="input" />
         </label>
         <button type="submit" className="btn-primary py-1.5 text-sm">
           Make page

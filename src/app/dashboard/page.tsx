@@ -10,6 +10,7 @@ import { getBinCollections, type Collection } from "@/lib/hackney-bins";
 import { getEnergyUsage, type DailyUsage } from "@/lib/octopus";
 import { StayLegend, StayWeeks } from "./calendar/stay-weeks";
 import { MiniUsage } from "./energy/mini-usage";
+import { HousePages } from "./pages/house-pages";
 import { PhoneSetup } from "./phone-setup";
 import { UsefulLinks } from "./useful-links";
 
@@ -140,10 +141,6 @@ export default async function DashboardHome() {
               </li>
             )}
           </ul>
-          <Link href="/dashboard/pages" className="mt-1 block border-t border-line pt-3 hover:text-pillar">
-            <span className="font-medium">Pages →</span>
-            <span className="block text-sm text-muted">Write and share pages, like the room listing</span>
-          </Link>
         </section>
 
         <div className="grid content-start gap-3">
@@ -174,6 +171,7 @@ export default async function DashboardHome() {
           </section>
         </div>
       </div>
+      <HousePages />
       <UsefulLinks />
       <PhoneSetup />
     </>

@@ -1,6 +1,7 @@
 "use client";
 
 import { startTransition, useActionState, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { pagePhotos, removePhoto } from "@/lib/page-photos";
 import { PageBody } from "../../../page-body";
 import { deletePage, savePage, uploadImage, type SaveState } from "../actions";
 
@@ -94,31 +95,48 @@ export function Editor({ page }: { page: EditablePage }) {
     });
   }
 
-  // Headings and photos go on a line of their own
+  // Headings and list items go on a line of their own
   const lineStart = () => {
     const at = textarea.current?.selectionStart ?? body.length;
     return at === 0 || body[at - 1] === "\n" ? "" : "\n\n";
   };
 
-  async function addPhoto(file: File | undefined) {
-    if (!file) return;
-    setPhotoStatus("Adding photo…");
-    try {
-      const formData = new FormData();
-      formData.set("image", await shrinkPhoto(file), file.type === "image/gif" ? file.name : "photo.jpg");
-      const result = await uploadImage(page.id, formData);
-      if ("error" in result) {
-        setPhotoStatus(result.error);
-        return;
+  // Upload photos one by one and put them in the text where the cursor was, each on its own line
+  async function addPhotos(files: File[]) {
+    const images = files.filter((file) => file.type.startsWith("image/"));
+    if (photoInput.current) photoInput.current.value = "";
+    if (images.length === 0) return;
+    const at = textarea.current?.selectionStart ?? body.length;
+    const urls: string[] = [];
+    let failed = 0;
+    for (const [i, file] of images.entries()) {
+      setPhotoStatus(images.length > 1 ? `Adding photo ${i + 1} of ${images.length}…` : "Adding photo…");
+      try {
+        const formData = new FormData();
+        formData.set("image", await shrinkPhoto(file), file.type === "image/gif" ? file.name : "photo.jpg");
+        const result = await uploadImage(page.id, formData);
+        if ("url" in result) urls.push(result.url);
+        else failed++;
+      } catch {
+        failed++;
       }
-      insert(`${lineStart()}![`, `](${result.url})\n\n`, "Describe the photo");
-      setPhotoStatus(null);
-    } catch {
-      setPhotoStatus("Couldn't add that photo. Try a JPEG or PNG.");
-    } finally {
-      if (photoInput.current) photoInput.current.value = "";
     }
+    if (urls.length > 0) {
+      const photos = urls.map((url) => `![Photo](${url})\n\n`).join("");
+      setBody((text) => {
+        const before = text.slice(0, at);
+        const gap = before === "" || before.endsWith("\n\n") ? "" : before.endsWith("\n") ? "\n" : "\n\n";
+        return before + gap + photos + text.slice(at);
+      });
+    }
+    setPhotoStatus(
+      failed === 0
+        ? null
+        : `${failed === images.length ? "Couldn't add" : `Added ${urls.length}, but couldn't add ${failed} of`} ${images.length === 1 ? "that photo" : "the photos"}. Try a JPEG or PNG.`,
+    );
   }
+
+  const photos = pagePhotos(body);
 
   async function copyLink() {
     try {
@@ -175,27 +193,77 @@ export function Editor({ page }: { page: EditablePage }) {
             <button type="button" onClick={() => insert("[", "](https://)", "link text")} className="tool">
               Link
             </button>
-            <button type="button" onClick={() => photoInput.current?.click()} className="tool">
-              Photo
-            </button>
-            <input
-              ref={photoInput}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              hidden
-              onChange={(event) => addPhoto(event.target.files?.[0])}
-            />
           </div>
-          {photoStatus && (
-            <p aria-live="polite" className="mt-2 text-sm text-ink-soft">
-              {photoStatus}
+
+          <div
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              addPhotos([...event.dataTransfer.files]);
+            }}
+            className="mt-3 rounded-[2px] border-2 border-dashed border-rule p-3"
+          >
+            <p className="mb-2 font-medium">Photos</p>
+            <div className="flex flex-wrap items-center gap-2">
+              {photos.map((photo) => (
+                <span key={photo.url} className="relative">
+                  {/* Already shrunk on upload, so next/image has nothing to add */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={photo.url} alt={photo.alt} className="size-16 rounded-[2px] object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setBody((text) => removePhoto(text, photo.url))}
+                    aria-label="Take this photo off the page"
+                    className="absolute -top-2 -right-2 flex size-6 cursor-pointer items-center justify-center rounded-full border border-rule bg-paper text-sm leading-none hover:border-danger hover:text-danger"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              <button
+                type="button"
+                onClick={() => photoInput.current?.click()}
+                disabled={photoStatus?.startsWith("Adding") ?? false}
+                className="flex size-16 cursor-pointer flex-col items-center justify-center rounded-[2px] border border-rule text-xs text-ink-soft hover:border-ink hover:text-ink disabled:opacity-50"
+              >
+                <span className="text-2xl leading-none">+</span>
+                Add photos
+              </button>
+              <input
+                ref={photoInput}
+                type="file"
+                accept="image/*"
+                multiple
+                hidden
+                onChange={(event) => addPhotos([...(event.target.files ?? [])])}
+              />
+            </div>
+            <p aria-live="polite" className="mt-2 text-xs text-ink-soft">
+              {photoStatus ??
+                (photos.length === 0
+                  ? "No photos yet. Add some, drag them here, or paste one into the text. They go where your cursor is."
+                  : "New photos go where your cursor is in the text. Move a photo by moving its ![Photo](…) line.")}
             </p>
-          )}
+          </div>
+
           <textarea
             ref={textarea}
             name="body"
             value={body}
             onChange={(event) => setBody(event.target.value)}
+            onDragOver={(event) => event.dataTransfer.types.includes("Files") && event.preventDefault()}
+            onDrop={(event) => {
+              if (event.dataTransfer.files.length === 0) return;
+              event.preventDefault();
+              addPhotos([...event.dataTransfer.files]);
+            }}
+            onPaste={(event) => {
+              const files = [...event.clipboardData.files];
+              if (files.some((file) => file.type.startsWith("image/"))) {
+                event.preventDefault();
+                addPhotos(files);
+              }
+            }}
             rows={22}
             hidden={tab !== "write"}
             className="textbox mt-3 font-mono text-sm leading-relaxed"
