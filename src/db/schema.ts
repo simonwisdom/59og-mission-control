@@ -1,5 +1,6 @@
 import {
   boolean,
+  customType,
   date,
   integer,
   pgEnum,
@@ -58,6 +59,36 @@ export const loginLinks = pgTable("login_links", {
   lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
 });
 
+// Pages housemates write in the dashboard, e.g. the room listing. A published page can be read
+// by anyone with its link at /p/<slug>; a draft only by housemates.
+export const pages = pgTable("pages", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  // Markdown
+  body: text("body").default("").notNull(),
+  published: boolean("published").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  // The login link's name, or null after a password login, which doesn't say who it was
+  updatedBy: text("updated_by"),
+});
+
+const bytea = customType<{ data: Buffer }>({ dataType: () => "bytea" });
+
+// Photos added to a page, kept in the database so there's no separate file store to run.
+// The editor shrinks them in the browser before upload.
+export const pageImages = pgTable("page_images", {
+  id: serial("id").primaryKey(),
+  pageId: integer("page_id")
+    .notNull()
+    .references(() => pages.id, { onDelete: "cascade" }),
+  contentType: text("content_type").notNull(),
+  data: bytea("data").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export type Application =typeof applications.$inferSelect;
 export type Note = typeof notes.$inferSelect;
+export type Page = typeof pages.$inferSelect;
 export type ApplicationStatus = (typeof applicationStatus.enumValues)[number];

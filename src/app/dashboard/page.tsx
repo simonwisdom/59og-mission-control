@@ -140,6 +140,10 @@ export default async function DashboardHome() {
               </li>
             )}
           </ul>
+          <Link href="/dashboard/pages" className="mt-1 block border-t border-line pt-3 hover:text-pillar">
+            <span className="font-medium">Pages →</span>
+            <span className="block text-sm text-muted">Write and share pages, like the room listing</span>
+          </Link>
         </section>
 
         <div className="grid content-start gap-3">

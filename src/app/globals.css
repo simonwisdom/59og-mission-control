@@ -140,4 +140,58 @@ body {
   .btn-secondary {
     @apply rounded-[2px] border border-rule px-3 py-1.5 text-sm hover:border-ink disabled:cursor-default disabled:opacity-40;
   }
+  /* The page editor's Write/Preview switch and formatting buttons */
+  .tab {
+    @apply rounded-[2px] px-3 py-1 text-sm text-ink-soft hover:text-ink aria-pressed:bg-ink aria-pressed:text-paper;
+  }
+  .tool {
+    @apply rounded-[2px] border border-rule px-2.5 py-1 text-sm hover:border-ink;
+  }
+  /* A housemate-written page, from Markdown */
+  .page-body {
+    @apply leading-relaxed break-words;
+  }
+  .page-body > * + * {
+    @apply mt-4;
+  }
+  .page-body h1 {
+    @apply mt-8 font-plate text-3xl tracking-[0.02em];
+  }
+  .page-body h2 {
+    @apply mt-8 font-plate text-xl tracking-[0.06em] uppercase;
+  }
+  .page-body h3 {
+    @apply mt-6 font-plate text-lg tracking-[0.02em];
+  }
+  .page-body a {
+    @apply underline underline-offset-2 hover:text-pillar;
+  }
+  .page-body ul {
+    @apply list-disc pl-6;
+  }
+  .page-body ol {
+    @apply list-decimal pl-6;
+  }
+  .page-body li + li {
+    @apply mt-1;
+  }
+  .page-body blockquote {
+    @apply border-l-4 border-tile pl-4 text-ink-soft;
+  }
+  .page-body img {
+    @apply h-auto max-w-full rounded-[2px];
+  }
+  .page-body hr {
+    @apply border-rule;
+  }
+  .page-body table {
+    @apply block w-full overflow-x-auto border-collapse;
+  }
+  .page-body th,
+  .page-body td {
+    @apply border-b border-rule py-2 pr-4 text-left align-top;
+  }
+  .page-body code {
+    @apply rounded-[2px] bg-rule/40 px-1 font-mono text-sm;
+  }
 }

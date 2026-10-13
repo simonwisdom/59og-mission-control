@@ -44,6 +44,14 @@ export async function isLoggedIn() {
   return (await readSession((await cookies()).get(SESSION_COOKIE)?.value)) !== null;
 }
 
+// Who is logged in, as far as the site knows: the login link's name, or null after a password login
+export async function sessionName() {
+  const session = await readSession((await cookies()).get(SESSION_COOKIE)?.value);
+  if (session?.linkId == null) return null;
+  const [link] = await db.select({ name: loginLinks.name }).from(loginLinks).where(eq(loginLinks.id, session.linkId));
+  return link?.name ?? null;
+}
+
 // Call at the top of every dashboard page and server action. The proxy only
 // does an optimistic redirect, so this is the real check.
 export async function requireSession() {
