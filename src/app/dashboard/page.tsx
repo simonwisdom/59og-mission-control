@@ -124,52 +124,54 @@ export default async function DashboardHome() {
   return (
     <>
       <h1 className="section-title mb-5">House services</h1>
-      <div className="grid gap-3 md:grid-cols-2">
-        <section className="card border-2 border-ink/80">
-          <h2 className="hand text-xl">Coming up</h2>
-          <ul className="mt-2 divide-y divide-line">
-            <li className="py-3">
-              <Suspense fallback={<p className="text-muted">Checking bin day…</p>}>
-                <BinDay today={today} />
-              </Suspense>
-            </li>
-            {pending > 0 && (
+      {/* Short cards stacked on the left and the tall calendar on the right, so the columns come out
+          close in height and no card is stretched to fill */}
+      <div className="grid items-start gap-3 md:grid-cols-2">
+        <div className="grid gap-3">
+          <section className="card border-2 border-ink/80">
+            <h2 className="hand text-xl">Coming up</h2>
+            <ul className="mt-2 divide-y divide-line">
               <li className="py-3">
-                <Link href="/dashboard/applications" className="font-medium hover:text-pillar">
-                  {pending === 1 ? "A guest application" : `${pending} guest applications`} to look at
-                </Link>
+                <Suspense fallback={<p className="text-muted">Checking bin day…</p>}>
+                  <BinDay today={today} />
+                </Suspense>
               </li>
-            )}
-          </ul>
-        </section>
-
-        <div className="grid content-start gap-3">
+              {pending > 0 && (
+                <li className="py-3">
+                  <Link href="/dashboard/applications" className="font-medium hover:text-pillar">
+                    {pending === 1 ? "A guest application" : `${pending} guest applications`} to look at
+                  </Link>
+                </li>
+              )}
+            </ul>
+          </section>
           <Link href="/dashboard/energy" className="card block hover:border-tile">
             <h2 className="hand text-lg">Energy, last 7 days</h2>
             <Suspense fallback={<p className="mt-1 text-sm text-muted">Reading the meters…</p>}>
               <EnergyWeek />
             </Suspense>
           </Link>
-          <section className="card">
-            <div className="mb-3 flex items-baseline justify-between gap-2">
-              <h2 className="hand text-lg">Guests</h2>
-              <Link href="/dashboard/calendar" className="text-sm text-muted hover:text-pillar">
-                Full calendar →
-              </Link>
-            </div>
-            <StayWeeks weeks={weeks} stays={stays} today={today} compact />
-            <StayLegend className="mt-2 text-xs" />
-            {later && (
-              <p className="mt-2 text-sm text-muted">
-                After that:{" "}
-                <Link href={`/dashboard/applications/${later.id}`} className="font-medium text-foreground hover:text-pillar">
-                  {later.name}
-                </Link>
-                , {formatDate(later.arrivalDate)}
-              </p>
-            )}
-          </section>
         </div>
+
+        <section className="card">
+          <div className="mb-3 flex items-baseline justify-between gap-2">
+            <h2 className="hand text-lg">Guests</h2>
+            <Link href="/dashboard/calendar" className="text-sm text-muted hover:text-pillar">
+              Full calendar →
+            </Link>
+          </div>
+          <StayWeeks weeks={weeks} stays={stays} today={today} compact />
+          <StayLegend className="mt-2 text-xs" />
+          {later && (
+            <p className="mt-2 text-sm text-muted">
+              After that:{" "}
+              <Link href={`/dashboard/applications/${later.id}`} className="font-medium text-foreground hover:text-pillar">
+                {later.name}
+              </Link>
+              , {formatDate(later.arrivalDate)}
+            </p>
+          )}
+        </section>
       </div>
       <HousePages />
       <UsefulLinks />
