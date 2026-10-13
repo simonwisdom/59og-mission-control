@@ -1,13 +1,19 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { connection } from "next/server";
 import house from "../../../public/house.jpg";
 import { Nameplate, SiteBar } from "../site-bar";
 import { ApplyForm } from "./apply-form";
+import { londonToday, upcomingBookedNights } from "./booked";
 
 export const metadata: Metadata = { title: "Apply to stay" };
 
-export default function ApplyPage() {
+export default async function ApplyPage() {
+  // Booked dates change as housemates approve stays, so read them on every visit
+  await connection();
+  const booked = await upcomingBookedNights();
+
   return (
     <>
       <SiteBar awning={false}>
@@ -37,7 +43,7 @@ export default function ApplyPage() {
               Tell us a bit about yourself and your visit.
             </p>
           </div>
-          <ApplyForm />
+          <ApplyForm booked={booked} today={londonToday()} />
         </div>
       </main>
     </>

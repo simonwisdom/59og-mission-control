@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { submitApplication, type ApplyState } from "./actions";
 import { Postmark, Stamp } from "./postcard-marks";
+import { StayPicker } from "./stay-picker";
 
 const initialState: ApplyState = { status: "idle" };
 
@@ -22,7 +23,7 @@ function StampWithPostmark() {
 }
 
 // The form is the back of a postcard: a message side and an address side.
-export function ApplyForm() {
+export function ApplyForm({ booked, today }: { booked: string[]; today: string }) {
   const [state, action, pending] = useActionState(submitApplication, initialState);
   const [partySize, setPartySize] = useState("1");
 
@@ -146,32 +147,13 @@ export function ApplyForm() {
 
           <fieldset>
             <legend className="hint">Visiting</legend>
-            <div className="grid grid-cols-2 gap-3">
-              <label>
-                <span className="hint">from</span>
-                <input
-                  name="arrivalDate"
-                  type="date"
-                  required
-                  aria-label="Arrival date"
-                  defaultValue={values.arrivalDate}
-                  aria-invalid={!!errors.arrivalDate}
-                  className="input px-2 text-sm"
-                />
-              </label>
-              <label>
-                <span className="hint">to</span>
-                <input
-                  name="departureDate"
-                  type="date"
-                  required
-                  aria-label="Departure date"
-                  defaultValue={values.departureDate}
-                  aria-invalid={!!errors.departureDate}
-                  className="input px-2 text-sm"
-                />
-              </label>
-            </div>
+            <StayPicker
+              booked={booked}
+              today={today}
+              defaultArrival={values.arrivalDate}
+              defaultDeparture={values.departureDate}
+              invalid={!!(errors.arrivalDate ?? errors.departureDate)}
+            />
             <label className="mt-3 flex items-center gap-3">
               <span>with</span>
               <input

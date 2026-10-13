@@ -4,7 +4,9 @@ import { after } from "next/server";
 import { db } from "@/db";
 import { applications } from "@/db/schema";
 import { parseApplication, type FieldErrors } from "@/lib/application-schema";
+import { overlapsBooked } from "@/lib/guest-calendar";
 import { notifyNewApplication } from "@/lib/notify";
+import { upcomingBookedNights } from "./booked";
 
 export type ApplyState =
   | { status: "idle" }
@@ -16,11 +18,15 @@ export async function submitApplication(_prev: ApplyState, formData: FormData): 
   if (formData.get("website")) return { status: "submitted" };
 
   const result = parseApplication(formData);
+  const values = () =>
+    Object.fromEntries([...formData.entries()].map(([key, value]) => [key, String(value)]));
   if (!result.success) {
-    const values = Object.fromEntries(
-      [...formData.entries()].map(([key, value]) => [key, String(value)]),
-    );
-    return { status: "error", errors: result.errors, values };
+    return { status: "error", errors: result.errors, values: values() };
+  }
+  // The picker already rules out booked nights, but a stay may have been approved since the page loaded
+  if (overlapsBooked(result.data, await upcomingBookedNights())) {
+    const errors = { arrivalDate: "Someone is already staying on some of those nights. Please pick other dates." };
+    return { status: "error", errors, values: values() };
   }
 
   const [saved] = await db.insert(applications).values(result.data).returning();

@@ -1,15 +1,16 @@
 import { createHmac } from "node:crypto";
 import type { Application } from "@/db/schema";
 import { formatPartySize } from "./field-labels";
+import { nextDay } from "./dates";
 import { passwordMatches } from "./session";
+
+export { isMonth, monthWeeks, nextDay, shiftMonth, weeksFrom } from "./dates";
 
 // Guest stays as a calendar: a month grid on the dashboard, and a feed housemates subscribe to
 // from Apple or Google Calendar. Calendar apps can't log in, so the feed URL carries a secret
 // derived from SESSION_SECRET; changing SESSION_SECRET changes the link and cuts off old ones.
 
 export type Stay = Pick<Application, "id" | "name" | "partySize" | "arrivalDate" | "departureDate" | "status">;
-
-const DAY_MS = 86_400_000;
 
 export function calendarFeedToken(secret: string) {
   return createHmac("sha256", secret).update("guest-calendar-feed").digest("base64url").slice(0, 32);
@@ -18,45 +19,6 @@ export function calendarFeedToken(secret: string) {
 export function feedTokenMatches(token: string, secret: string) {
   return passwordMatches(token, calendarFeedToken(secret));
 }
-
-// "2026-10-12" → "2026-10-13"
-export function nextDay(date: string) {
-  return new Date(Date.parse(`${date}T00:00:00Z`) + DAY_MS).toISOString().slice(0, 10);
-}
-
-// Mondays-first weeks covering the month ("2026-10"), each day as "YYYY-MM-DD", with the
-// neighbouring months' days filling the first and last weeks
-export function monthWeeks(month: string) {
-  const first = Date.parse(`${month}-01T00:00:00Z`);
-  const mondayOffset = (new Date(first).getUTCDay() + 6) % 7;
-  let day = first - mondayOffset * DAY_MS;
-  const weeks: string[][] = [];
-  do {
-    const week = Array.from({ length: 7 }, (_, i) => new Date(day + i * DAY_MS).toISOString().slice(0, 10));
-    weeks.push(week);
-    day += 7 * DAY_MS;
-  } while (new Date(day).toISOString().slice(0, 7) === month);
-  return weeks;
-}
-
-// A run of Monday-first weeks starting with the week that holds the day ("2026-10-12")
-export function weeksFrom(date: string, count: number) {
-  const day = Date.parse(`${date}T00:00:00Z`);
-  const monday = day - ((new Date(day).getUTCDay() + 6) % 7) * DAY_MS;
-  return Array.from({ length: count }, (_, week) =>
-    Array.from({ length: 7 }, (_, i) => new Date(monday + (week * 7 + i) * DAY_MS).toISOString().slice(0, 10)),
-  );
-}
-
-// "2026-10" plus or minus a number of months
-export function shiftMonth(month: string, by: number) {
-  const [year, monthNumber] = month.split("-").map(Number);
-  const date = new Date(Date.UTC(year, monthNumber - 1 + by, 1));
-  return date.toISOString().slice(0, 7);
-}
-
-export const isMonth = (value: unknown): value is string =>
-  typeof value === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
 
 export function stayTitle(stay: Stay) {
   const name = stay.partySize > 1 ? `${stay.name} (${formatPartySize(stay.partySize)})` : stay.name;
@@ -115,4 +77,23 @@ export function guestFeed(stays: Stay[], { appUrl, now = new Date() }: { appUrl?
     "END:VCALENDAR",
   ];
   return lines.map(fold).join("\r\n") + "\r\n";
+}
+
+// The nights a stay takes up, as "YYYY-MM-DD" for each night's evening: arrival up to the night
+// before departure, so a new guest can arrive on the day another leaves. A same-day visit
+// still takes up its one day.
+export function stayNights({ arrivalDate, departureDate }: Pick<Stay, "arrivalDate" | "departureDate">) {
+  const nights = [arrivalDate];
+  for (let night = nextDay(arrivalDate); night < departureDate; night = nextDay(night)) nights.push(night);
+  return nights;
+}
+
+// Every night taken by a confirmed stay, sorted, without names, so the apply page can grey them out
+export function bookedNights(stays: Pick<Stay, "arrivalDate" | "departureDate">[]) {
+  return [...new Set(stays.flatMap(stayNights))].sort();
+}
+
+export function overlapsBooked(stay: Pick<Stay, "arrivalDate" | "departureDate">, booked: Iterable<string>) {
+  const taken = new Set(booked);
+  return stayNights(stay).some((night) => taken.has(night));
 }

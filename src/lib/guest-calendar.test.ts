@@ -8,6 +8,9 @@ import {
   nextDay,
   shiftMonth,
   weeksFrom,
+  bookedNights,
+  overlapsBooked,
+  stayNights,
   type Stay,
 } from "./guest-calendar";
 
@@ -98,5 +101,31 @@ describe("guest feed", () => {
     const feed = guestFeed([stay({ name: "A".repeat(200) })], { now });
     for (const line of feed.split("\r\n")) expect(Buffer.byteLength(line)).toBeLessThanOrEqual(75);
     expect(feed.replace(/\r\n /g, "")).toContain(`SUMMARY:${"A".repeat(200)}`);
+  });
+});
+
+describe("booked nights", () => {
+  it("covers arrival up to the night before departure", () => {
+    expect(stayNights(stay())).toEqual(["2026-10-30", "2026-10-31", "2026-11-01"]);
+  });
+
+  it("counts a same-day visit as its one day", () => {
+    expect(stayNights(stay({ arrivalDate: "2026-10-30", departureDate: "2026-10-30" }))).toEqual(["2026-10-30"]);
+  });
+
+  it("merges stays into one sorted list without repeats", () => {
+    const booked = bookedNights([
+      stay({ arrivalDate: "2026-11-01", departureDate: "2026-11-03" }),
+      stay({ arrivalDate: "2026-10-31", departureDate: "2026-11-02" }),
+    ]);
+    expect(booked).toEqual(["2026-10-31", "2026-11-01", "2026-11-02"]);
+  });
+
+  it("lets a guest arrive the day another leaves, but not stay over a booked night", () => {
+    const booked = bookedNights([stay()]);
+    expect(overlapsBooked({ arrivalDate: "2026-11-02", departureDate: "2026-11-05" }, booked)).toBe(false);
+    expect(overlapsBooked({ arrivalDate: "2026-10-27", departureDate: "2026-10-30" }, booked)).toBe(false);
+    expect(overlapsBooked({ arrivalDate: "2026-10-27", departureDate: "2026-10-31" }, booked)).toBe(true);
+    expect(overlapsBooked({ arrivalDate: "2026-10-25", departureDate: "2026-11-05" }, booked)).toBe(true);
   });
 });
