@@ -6,6 +6,7 @@ A dashboard for running house services:
 - `/dashboard`: housemates log in with the shared house password or a personal login link. From there:
   - **Guest applications**: review applications, leave notes, and approve or decline
   - **Energy**: daily electricity and gas use from the Octopus smart meters
+  - **House money**: the shared account's balance, this month's money in and out, and recent transactions, from Actual Budget
   - Links to the house accounts (Sainsbury's, Octopus, Thames Water, Hyperoptic, Hackney permits and bike hangars)
 
 Built with Next.js 16, Drizzle ORM and Postgres. Hosted on Railway.
@@ -46,6 +47,7 @@ openssl rand -base64 48     # SESSION_SECRET
    - `HOUSE_PASSWORD`: long and random, shared with housemates
    - `SESSION_SECRET`: 32+ random characters
    - `OCTOPUS_API_KEY` and `OCTOPUS_ACCOUNT_NUMBER` (optional): from the Octopus website under Personal details > API access. Without them the Energy page just says what to set.
+   - `ACTUAL_SERVER_URL`, `ACTUAL_PASSWORD` and `ACTUAL_SYNC_ID` (optional): the house budget in Actual. Actual has no web API, so the app uses Actual's official Node client: it logs in with the server password, downloads the budget to a temp folder and reads it, at most every 5 minutes. The sync ID is in Actual under Settings > Show advanced settings. Add `ACTUAL_ENCRYPTION_PASSWORD` if the budget is end-to-end encrypted, and `ACTUAL_ACCOUNTS` (comma-separated names) to show only some accounts. Keep `@actual-app/api` on the same version as the Actual server. Until these are set, the dashboard has no money card.
    - `NTFY_TOPIC` and `APP_URL` (optional): phone notifications for new applications. Housemates install the free ntfy app and subscribe to the topic. Anyone who knows the topic can read it, so make it long and random (`olive-grove-` plus `openssl rand -hex 8`). The message only has the guest's first name, dates and party size. `APP_URL` is the site's public address, so tapping the notification opens the application.
 4. Generate a public domain under the service's Networking settings.
 

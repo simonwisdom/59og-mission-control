@@ -12,6 +12,7 @@
     "db:migrate": "node --env-file-if-exists=.env scripts/migrate.mjs"
   },
   "dependencies": {
+    "@actual-app/api": "26.10.0",
     "drizzle-orm": "^0.45.3",
     "lucide-react": "^1.52.0",
     "next": "16.3.8",

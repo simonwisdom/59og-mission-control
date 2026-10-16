@@ -4,7 +4,8 @@ import { Suspense } from "react";
 import { and, asc, count, eq, gt, gte, lte, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { applications } from "@/db/schema";
-import { formatDate } from "@/lib/format";
+import { getHouseFinances, isActualConfigured } from "@/lib/actual";
+import { formatDate, formatPence } from "@/lib/format";
 import { weeksFrom } from "@/lib/guest-calendar";
 import { getBinCollections, type Collection } from "@/lib/hackney-bins";
 import { getEnergyUsage, type DailyUsage } from "@/lib/octopus";
@@ -49,7 +50,7 @@ function binTask(next: Collection, after: Collection | undefined, today: string)
 // The meter reports a day or so late, so the newest day can be partly read; show only full days
 const fullWeek = (days: DailyUsage[] | null) => (days ?? []).filter((day) => day.readings >= 46).slice(-7);
 
-// Hackney and Octopus can take a few seconds when their cache is cold, so these two stream in
+// Hackney, Octopus and Actual can take a few seconds when their cache is cold, so these stream in
 // after the rest of the page
 
 async function BinDay({ today }: { today: string }) {
@@ -68,6 +69,25 @@ async function BinDay({ today }: { today: string }) {
       <p className="font-medium">{bin.task}</p>
       {bin.then && <p className="text-sm text-muted">{bin.then}</p>}
     </>
+  );
+}
+
+async function MoneySummary() {
+  const money = await getHouseFinances();
+  if (money.status !== "ok") {
+    return <p className="mt-1 text-sm text-muted">Balance and spending from the house budget in Actual</p>;
+  }
+  const balance = money.accounts.reduce((sum, account) => sum + account.balance, 0);
+  return (
+    <div className="mt-1">
+      <p>
+        <span className="text-lg font-medium tabular-nums">{formatPence(balance)}</span>{" "}
+        <span className="text-muted">in the house account{money.accounts.length > 1 && "s"}</span>
+      </p>
+      <p className="text-sm text-muted">
+        This month: {formatPence(money.moneyIn)} in, {formatPence(money.moneyOut)} out
+      </p>
+    </div>
   );
 }
 
@@ -151,6 +171,14 @@ export default async function DashboardHome() {
               <EnergyWeek />
             </Suspense>
           </Link>
+          {isActualConfigured() && (
+            <Link href="/dashboard/money" className="card block hover:border-tile">
+              <h2 className="hand text-lg">House money</h2>
+              <Suspense fallback={<p className="mt-1 text-sm text-muted">Opening the books…</p>}>
+                <MoneySummary />
+              </Suspense>
+            </Link>
+          )}
         </div>
 
         <section className="card">
