@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { getHouseFinances, type CategorySpend, type PayeeTotal } from "@/lib/actual";
+import { getHouseFinances, type CategorySpend } from "@/lib/actual";
 import { formatPence } from "@/lib/format";
 import { Crumbs } from "../crumbs";
+import { Checklist } from "./checklist";
 
 export const metadata: Metadata = { title: "House money" };
 
@@ -9,30 +10,27 @@ const monthName = new Intl.DateTimeFormat("en-GB", { month: "long", timeZone: "U
 const shortDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 const short = (date: string) => shortDate.format(new Date(`${date}T00:00:00Z`));
 
-// Rows of name, amount and a bar sized against the biggest, e.g. spending by category
-function AmountBars({ title, rows, empty }: { title: string; rows: (CategorySpend | PayeeTotal)[]; empty: string }) {
+// Spending by category, each with a bar sized against the biggest
+function SpendingBars({ rows }: { rows: CategorySpend[] }) {
   const max = Math.max(...rows.map((row) => row.amount), 1);
   return (
     <section className="card">
-      <h2 className="legend">{title}</h2>
+      <h2 className="legend">Spent on</h2>
       {rows.length === 0 ? (
-        <p className="mt-2 text-sm text-muted">{empty}</p>
+        <p className="mt-2 text-sm text-muted">Nothing spent yet this month.</p>
       ) : (
         <ul className="mt-3 grid gap-2.5">
-          {rows.map((row) => {
-            const name = "category" in row ? row.category : row.payee;
-            return (
-              <li key={name}>
-                <div className="flex justify-between gap-3 text-sm">
-                  <span>{name}</span>
-                  <span className="tabular-nums">{formatPence(row.amount)}</span>
-                </div>
-                <div className="mt-1 h-1.5 rounded-full bg-line">
-                  <div className="h-full rounded-full bg-tile" style={{ width: `${(row.amount / max) * 100}%` }} />
-                </div>
-              </li>
-            );
-          })}
+          {rows.map((row) => (
+            <li key={row.category}>
+              <div className="flex justify-between gap-3 text-sm">
+                <span>{row.category}</span>
+                <span className="tabular-nums">{formatPence(row.amount)}</span>
+              </div>
+              <div className="mt-1 h-1.5 rounded-full bg-line">
+                <div className="h-full rounded-full bg-tile" style={{ width: `${(row.amount / max) * 100}%` }} />
+              </div>
+            </li>
+          ))}
         </ul>
       )}
     </section>
@@ -41,6 +39,7 @@ function AmountBars({ title, rows, empty }: { title: string; rows: (CategorySpen
 
 export default async function MoneyPage() {
   const money = await getHouseFinances();
+  const month = money.status === "ok" ? monthName.format(new Date(`${money.month}-01T00:00:00Z`)) : "";
 
   return (
     <>
@@ -69,17 +68,34 @@ export default async function MoneyPage() {
             ))}
           </div>
 
-          <h2 className="section-title mt-8 mb-3">{monthName.format(new Date(`${money.month}-01T00:00:00Z`))} so far</h2>
-          <p className="mb-3">
+          <h2 className="section-title mt-8 mb-3">{month} so far</h2>
+          <div className="grid items-start gap-3 md:grid-cols-2">
+            <Checklist
+              title="Shares"
+              kind="share"
+              payments={money.shares}
+              empty="No regular payments in yet. Anyone who pays in most months shows here."
+            />
+            <Checklist
+              title="Rent and bills"
+              kind="bill"
+              payments={money.bills}
+              empty="No regular bills yet. Anything paid once a month, most months, shows here."
+            />
+          </div>
+          <p className="mt-2 text-xs text-muted">
+            Worked out from the last three months: anyone who paid in, and any bill that went out once a month, in at
+            least two of them. A share is expected to match last month&apos;s; a bill shows what it came to this month
+            once it&apos;s gone out. A payment shows as late three days after its usual day.
+          </p>
+
+          <p className="mt-6 mb-3">
             <span className="text-lg font-medium tabular-nums">{formatPence(money.moneyIn)}</span>{" "}
             <span className="text-muted">in</span> ·{" "}
             <span className="text-lg font-medium tabular-nums">{formatPence(money.moneyOut)}</span>{" "}
-            <span className="text-muted">out</span>
+            <span className="text-muted">out in {month}</span>
           </p>
-          <div className="grid items-start gap-3 md:grid-cols-2">
-            <AmountBars title="Paid in" rows={money.paidIn} empty="Nothing paid in yet this month." />
-            <AmountBars title="Spent on" rows={money.spending} empty="Nothing spent yet this month." />
-          </div>
+          <SpendingBars rows={money.spending} />
 
           <h2 className="section-title mt-8 mb-3">Recent</h2>
           <ul className="card divide-y divide-line py-1">

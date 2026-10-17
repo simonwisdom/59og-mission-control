@@ -4,13 +4,14 @@ import { Suspense } from "react";
 import { and, asc, count, eq, gt, gte, lte, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { applications } from "@/db/schema";
-import { getHouseFinances, isActualConfigured } from "@/lib/actual";
+import { getHouseFinances, isActualConfigured, type RegularPayment } from "@/lib/actual";
 import { formatDate, formatPence } from "@/lib/format";
 import { weeksFrom } from "@/lib/guest-calendar";
 import { getBinCollections, type Collection } from "@/lib/hackney-bins";
 import { getEnergyUsage, type DailyUsage } from "@/lib/octopus";
 import { StayLegend, StayWeeks } from "./calendar/stay-weeks";
 import { MiniUsage } from "./energy/mini-usage";
+import { paymentStatus } from "./money/checklist";
 import { HousePages } from "./pages/house-pages";
 import { PhoneSetup } from "./phone-setup";
 import { UsefulLinks } from "./useful-links";
@@ -84,11 +85,36 @@ async function MoneySummary() {
         <span className="text-lg font-medium tabular-nums">{formatPence(balance)}</span>{" "}
         <span className="text-muted">in the house account{money.accounts.length > 1 && "s"}</span>
       </p>
-      <p className="text-sm text-muted">
-        This month: {formatPence(money.moneyIn)} in, {formatPence(money.moneyOut)} out
-      </p>
+      {(money.shares.length > 0 || money.bills.length > 0) && (
+        <p className="text-sm text-muted">
+          {checked(money.shares, "shares paid")} · {checked(money.bills, "bills gone out")}
+        </p>
+      )}
     </div>
   );
+}
+
+// "3 of 4 shares paid"
+const checked = (payments: RegularPayment[], what: string) =>
+  `${payments.filter((p) => p.status === "paid").length} of ${payments.length} ${what}`;
+
+// Late shares and bills, as items in Coming up, so nobody has to open the money page to notice
+async function MoneyAlerts() {
+  const money = await getHouseFinances();
+  if (money.status !== "ok") return null;
+  const late = [
+    ...money.bills.filter((p) => p.status === "late").map((p) => ({ p, text: `${p.payee} hasn't gone out` })),
+    ...money.shares
+      .filter((p) => p.status === "late" || (p.status === "part-paid" && p.daysLate > 3))
+      .map((p) => ({ p, text: `${p.payee}'s share: ${paymentStatus(p, "share")}` })),
+  ];
+  return late.map(({ p, text }) => (
+    <li key={`${p.payee}-${text}`} className="py-3">
+      <Link href="/dashboard/money" className="font-medium hover:text-pillar">
+        {text}
+      </Link>
+    </li>
+  ));
 }
 
 async function EnergyWeek() {
@@ -162,6 +188,11 @@ export default async function DashboardHome() {
                     {pending === 1 ? "A guest application" : `${pending} guest applications`} to look at
                   </Link>
                 </li>
+              )}
+              {isActualConfigured() && (
+                <Suspense fallback={null}>
+                  <MoneyAlerts />
+                </Suspense>
               )}
             </ul>
           </section>
