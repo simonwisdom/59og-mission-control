@@ -11,7 +11,6 @@ import { getBinCollections, type Collection } from "@/lib/hackney-bins";
 import { getEnergyUsage, type DailyUsage } from "@/lib/octopus";
 import { StayLegend, StayWeeks } from "./calendar/stay-weeks";
 import { MiniUsage } from "./energy/mini-usage";
-import { paymentStatus } from "./money/checklist";
 import { HousePages } from "./pages/house-pages";
 import { PhoneSetup } from "./phone-setup";
 import { UsefulLinks } from "./useful-links";
@@ -98,25 +97,6 @@ async function MoneySummary() {
 const checked = (payments: RegularPayment[], what: string) =>
   `${payments.filter((p) => p.status === "paid").length} of ${payments.length} ${what}`;
 
-// Late shares and bills, as items in Coming up, so nobody has to open the money page to notice
-async function MoneyAlerts() {
-  const money = await getHouseFinances();
-  if (money.status !== "ok") return null;
-  const late = [
-    ...money.bills.filter((p) => p.status === "late").map((p) => ({ p, text: `${p.payee} hasn't gone out` })),
-    ...money.shares
-      .filter((p) => p.status === "late" || (p.status === "part-paid" && p.daysLate > 3))
-      .map((p) => ({ p, text: `${p.payee}'s share: ${paymentStatus(p, "share")}` })),
-  ];
-  return late.map(({ p, text }) => (
-    <li key={`${p.payee}-${text}`} className="py-3">
-      <Link href="/dashboard/money" className="font-medium hover:text-pillar">
-        {text}
-      </Link>
-    </li>
-  ));
-}
-
 async function EnergyWeek() {
   // Two days more than shown, so partly read days at either end can be dropped
   const energy = await getEnergyUsage(9);
@@ -188,11 +168,6 @@ export default async function DashboardHome() {
                     {pending === 1 ? "A guest application" : `${pending} guest applications`} to look at
                   </Link>
                 </li>
-              )}
-              {isActualConfigured() && (
-                <Suspense fallback={null}>
-                  <MoneyAlerts />
-                </Suspense>
               )}
             </ul>
           </section>
