@@ -4,7 +4,6 @@ import { applications } from "@/db/schema";
 import { getHouseFinances } from "@/lib/actual";
 import { botSummary, botTokenMatches } from "@/lib/bot-summary";
 import { getBinCollections } from "@/lib/hackney-bins";
-import { getEnergyUsage } from "@/lib/octopus";
 
 // The read-only feed Grovelet, the house chat bot, reads. It sits outside /dashboard because the
 // bot can't log in; BOT_API_TOKEN is the check instead, and the feed is off until it's set.
@@ -20,7 +19,7 @@ export async function GET(request: Request) {
 
   const today = londonToday();
   const until = new Date(Date.parse(`${today}T00:00:00Z`) + STAY_DAYS * 86_400_000).toISOString().slice(0, 10);
-  const [[{ pending }], stays, bins, energy, money] = await Promise.all([
+  const [[{ pending }], stays, bins, money] = await Promise.all([
     db.select({ pending: count() }).from(applications).where(eq(applications.status, "pending")),
     db
       .select({
@@ -41,8 +40,6 @@ export async function GET(request: Request) {
       )
       .orderBy(asc(applications.arrivalDate)),
     getBinCollections(today),
-    // Two days more than the week, so partly read days at either end can be dropped
-    getEnergyUsage(9),
     getHouseFinances(),
   ]);
 
@@ -51,7 +48,6 @@ export async function GET(request: Request) {
     bins: bins.status === "ok" ? bins.collections : [],
     pendingApplications: pending,
     stays,
-    energy: energy.status === "ok" ? energy : null,
     shares: money.status === "ok" ? money.shares : null,
   });
   return Response.json(summary, { headers: { "Cache-Control": "private, no-store" } });
