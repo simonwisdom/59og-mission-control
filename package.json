@@ -8,6 +8,7 @@
     "start": "node --env-file-if-exists=.env scripts/migrate.mjs && next start",
     "lint": "eslint",
     "test": "vitest run",
+    "e2e": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/e2e.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file-if-exists=.env scripts/migrate.mjs"
   },
