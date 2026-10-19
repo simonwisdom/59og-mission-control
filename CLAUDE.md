@@ -1,17 +1,19 @@
-To see a page, run `scripts/preview.sh [PAGE] [OUT_PNG] [WIDTH] [SELECTOR]` (e.g. `scripts/preview.sh /energy out.png 390`, or `scripts/preview.sh /apply out.png 390 fieldset` to crop to one element): it starts its own dev server, logs in with a signed cookie, saves a screenshot and stops the server. Don't hand-roll Chrome calls or cookies. The local server reads the live database, so don't submit forms from it; to show data that isn't there yet, feed example rows in temporarily and take them out before committing.
+To see a page, run `scripts/preview.sh [PAGE] [OUT_PNG] [WIDTH] [SELECTOR]` (e.g. `scripts/preview.sh /energy out.png 390`, or `scripts/preview.sh /apply out.png 390 fieldset` to crop to one element): it starts its own dev server, logs in with a signed cookie, saves a screenshot and stops the server. Don't hand-roll Chrome calls or cookies. The local server uses a local copy of the database (Homebrew Postgres on this Mac), so test forms may be submitted locally; the live database is only on Railway. `scripts/db-target` answers "which database?" (host, port and name; agents can't read `.env`). To show data that isn't there yet, feed example rows in temporarily and take them out before committing.
+
+To click through the site, run `npm run e2e [-- OUT_DIR]` (`scripts/e2e.mjs`): it starts its own dev server, logs in, loads every main page at phone width, checks booked nights can't be picked on /apply, sends a test application and checks it reaches the dashboard, then deletes its test rows and exits non-zero on any failure. Extend it for new pages and flows instead of writing a one-off script.
 
 ## Showing changes
 
 Simon is a visual thinker. For any change to what the site looks like:
 
-- Take a "before" screenshot before you edit and an "after" one once it works, at phone width (390) and cropped to the part that changed. Join them side by side, labelled (`magick before.png after.png … +append`), and show the picture with `decide status --picture`.
+- Take a "before" screenshot before you edit and an "after" one once it works, at phone width (390) and cropped to the part that changed. Join them side by side, labelled, with `scripts/compare.sh before.png after.png out.png`, and show the picture with `decide status --picture`.
 - If the change involves a look-and-feel choice Simon should weigh in on (a new layout, a new control, wording they'll see often), put the screenshots on a decide page and get Simon's feedback before shipping. Small or obvious visual fixes ship straight away, with the picture.
 
 @AGENTS.md
 
 ## Worktrees
 
-`.env` and `AGENTS.md` are gitignored, so a fresh worktree doesn't have them. Claude Code copies them in automatically via `.worktreeinclude`. In a worktree made any other way (Codex, `git worktree add`), symlink them from the main checkout: `ln -s ../../../.env .env`. Run `npm ci` in each worktree; a symlinked `node_modules` crashes Turbopack. Use a free port, e.g. `npm run dev -- -p 3001`.
+`.env` and `AGENTS.md` are gitignored, so a fresh worktree doesn't have them. Claude Code copies them in automatically via `.worktreeinclude`. In a worktree made any other way (Codex, `git worktree add`), symlink them from the main checkout: `ln -s ../../../.env .env`. Run `npm ci` in each worktree; a symlinked `node_modules` crashes Turbopack. Then run `npx next typegen` before `tsc`: a fresh worktree has no generated Next types, so `tsc` fails on `RouteContext`, `LayoutProps` and image imports until it has run. Use a free port, e.g. `npm run dev -- -p 3001`.
 
 ## Finishing a task
 
