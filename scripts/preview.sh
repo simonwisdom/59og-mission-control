@@ -28,6 +28,8 @@ case "$page" in
     ;;
 esac
 
+echo "Database: $(scripts/db-target)"
+
 port=$(node -e 'const s=require("net").createServer().listen(0,()=>{console.log(s.address().port);s.close()})')
 log="${TMPDIR:-/tmp}/59og-preview-$port.log"
 

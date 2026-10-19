@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Which database does this checkout use? Prints host, port and database name from DATABASE_URL
+# in .env, never the user or password. The local .env points at a Postgres on this Mac; the live
+# database is only on Railway.
+#
+#   scripts/db-target    # e.g. "localhost:5432/mission_control"
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+[ -f .env ] || { echo "No .env here; see CLAUDE.md (Worktrees)" >&2; exit 1; }
+
+node --env-file=.env -e '
+const raw = process.env.DATABASE_URL;
+if (!raw) { console.error("DATABASE_URL is not set in .env"); process.exit(1); }
+const url = new URL(raw);
+console.log(`${url.hostname}:${url.port || 5432}${url.pathname}`);
+'
