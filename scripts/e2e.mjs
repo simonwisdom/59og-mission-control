@@ -5,7 +5,8 @@
 //
 // Checks every main page loads at phone width without errors or sideways scroll, that booked
 // nights on the apply calendar can't be picked, and that a test application can be sent and
-// shows up on the dashboard. Its test rows (an approved stay and the application) are deleted
+// shows up on the dashboard, and that a housemate's trip can be added, changed and deleted from the
+// calendar. Its test rows (an approved stay, the application and the trip) are deleted
 // at the end. It refuses to run unless .env points at a database on this Mac, and blanks
 // NTFY_TOPIC so housemates' phones don't get a notification. With OUT_DIR, saves a screenshot
 // of each page there.
@@ -29,6 +30,7 @@ if (!["localhost", "127.0.0.1", "::1", "[::1]"].includes(dbHost)) {
 
 const WIDTH = 390;
 const TEST_EMAIL = "e2e-test@example.invalid";
+const TEST_PERSON = "E2E Traveller";
 const PAGES = [
   "/",
   "/apply",
@@ -80,6 +82,7 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
   await sql`delete from applications where email = ${TEST_EMAIL}`;
+  await sql`delete from trips where person = ${TEST_PERSON}`;
   console.log(`Database: ${dbHost}${new URL(process.env.DATABASE_URL).pathname}`);
 
   const context = await browser.newContext({ viewport: { width: WIDTH, height: 900 } });
@@ -163,12 +166,40 @@ try {
     await page.waitForURL(/\/dashboard\/applications\/\d+$/);
     await page.getByText(TEST_EMAIL).first().waitFor();
   });
+
+  await check("a trip can be added, changed and deleted on the calendar", async () => {
+    await page.goto(`${base}/dashboard/calendar`, { waitUntil: "networkidle" });
+    const leave = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
+    const back = new Date(Date.now() + 5 * 86_400_000).toISOString().slice(0, 10);
+    await page.getByLabel("Who").fill(TEST_PERSON);
+    await page.getByLabel("Leaving").fill(leave);
+    await page.getByLabel("Back").fill(back);
+    await page.getByLabel("Where (optional)").fill("Testville");
+    await page.getByRole("button", { name: "Add trip" }).click();
+    await page.getByRole("link", { name: `${TEST_PERSON} away · Testville` }).first().waitFor({ timeout: 30_000 });
+
+    await page.getByRole("link", { name: `${TEST_PERSON} away · Testville` }).first().click();
+    await page.waitForURL(/\/dashboard\/calendar\/trips\/\d+$/);
+    await page.getByLabel("Where (optional)").fill("");
+    await page.getByRole("button", { name: "Save changes" }).click();
+    await page.waitForURL(/\/dashboard\/calendar\?month=/);
+    const [saved] = await sql`select place from trips where person = ${TEST_PERSON}`;
+    expect(saved && saved.place === null, `saved as ${JSON.stringify(saved)}`);
+
+    await page.getByRole("link", { name: `${TEST_PERSON} away` }).first().click();
+    await page.getByRole("button", { name: "Delete trip" }).click();
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+    await page.waitForURL(/\/dashboard\/calendar$/);
+    const left = await sql`select id from trips where person = ${TEST_PERSON}`;
+    expect(left.length === 0, `${left.length} test trips left after deleting`);
+  });
 } catch (error) {
   failures.push("setup");
   console.error(error.message);
 } finally {
   const deleted = await sql`delete from applications where email = ${TEST_EMAIL} returning id`;
   if (deleted.length) console.log(`     removed ${deleted.length} test applications`);
+  await sql`delete from trips where person = ${TEST_PERSON}`;
   await sql.end();
   await browser.close();
   server.kill();

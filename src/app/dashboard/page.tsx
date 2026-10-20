@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { and, asc, count, eq, gt, gte, lte, ne } from "drizzle-orm";
 import { db } from "@/db";
-import { applications } from "@/db/schema";
+import { applications, trips } from "@/db/schema";
 import { getHouseFinances, isActualConfigured, type RegularPayment } from "@/lib/actual";
 import { isGmailConfigured } from "@/lib/gmail";
 import { getMailbox, recentEmails } from "@/lib/house-mail";
@@ -145,7 +145,7 @@ export default async function DashboardHome() {
     departureDate: applications.departureDate,
     status: applications.status,
   };
-  const [[{ pending }], stays, [later]] = await Promise.all([
+  const [[{ pending }], stays, [later], weekTrips] = await Promise.all([
     db.select({ pending: count() }).from(applications).where(eq(applications.status, "pending")),
     db
       .select(stayFields)
@@ -165,6 +165,11 @@ export default async function DashboardHome() {
       .where(and(eq(applications.status, "approved"), gt(applications.arrivalDate, lastDay)))
       .orderBy(asc(applications.arrivalDate))
       .limit(1),
+    db
+      .select()
+      .from(trips)
+      .where(and(lte(trips.leaveDate, lastDay), gte(trips.backDate, firstDay)))
+      .orderBy(asc(trips.leaveDate)),
   ]);
 
   return (
@@ -217,12 +222,12 @@ export default async function DashboardHome() {
 
         <section className="card">
           <div className="mb-3 flex items-baseline justify-between gap-2">
-            <h2 className="hand text-lg">Guests</h2>
+            <h2 className="hand text-lg">Calendar</h2>
             <Link href="/dashboard/calendar" className="text-sm text-muted hover:text-pillar">
               Full calendar →
             </Link>
           </div>
-          <StayWeeks weeks={weeks} stays={stays} today={today} compact />
+          <StayWeeks weeks={weeks} stays={stays} trips={weekTrips} today={today} compact />
           <StayLegend className="mt-2 text-xs" />
           {later && (
             <p className="mt-2 text-sm text-muted">

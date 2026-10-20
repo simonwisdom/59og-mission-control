@@ -1,12 +1,13 @@
 import { createHmac } from "node:crypto";
-import type { Application } from "@/db/schema";
+import type { Application, Trip } from "@/db/schema";
 import { formatPartySize } from "./field-labels";
 import { nextDay } from "./dates";
 import { passwordMatches } from "./session";
+import { tripTitle } from "./trips";
 
 export { isMonth, monthWeeks, nextDay, shiftMonth, weeksFrom } from "./dates";
 
-// Guest stays as a calendar: a month grid on the dashboard, and a feed housemates subscribe to
+// Guest stays and housemates' trips as a calendar: a month grid on the dashboard, and a feed housemates subscribe to
 // from Apple or Google Calendar. Calendar apps can't log in, so the feed URL carries a secret
 // derived from SESSION_SECRET; changing SESSION_SECRET changes the link and cuts off old ones.
 
@@ -46,9 +47,13 @@ function fold(line: string) {
 
 const compactDate = (date: string) => date.replaceAll("-", "");
 
-// An all-day event from arrival through the departure day, so the day they leave shows too.
+// An all-day event from arrival through the departure day, so the day they leave shows too, and
+// the same for each trip from the day they leave to the day they're back.
 // Only confirmed and requested stays belong in the feed; declined ones are left out by the caller.
-export function guestFeed(stays: Stay[], { appUrl, now = new Date() }: { appUrl?: string; now?: Date }) {
+export function guestFeed(
+  stays: Stay[],
+  { appUrl, now = new Date(), trips = [] }: { appUrl?: string; now?: Date; trips?: Pick<Trip, "id" | "person" | "leaveDate" | "backDate" | "place">[] },
+) {
   const stamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
   const base = appUrl?.replace(/\/$/, "");
   const events = stays.flatMap((stay) => [
@@ -63,17 +68,29 @@ export function guestFeed(stays: Stay[], { appUrl, now = new Date() }: { appUrl?
     ...(base ? [`URL:${base}/dashboard/applications/${stay.id}`] : []),
     "END:VEVENT",
   ]);
+  const tripEvents = trips.flatMap((trip) => [
+    "BEGIN:VEVENT",
+    `UID:housemate-trip-${trip.id}@olive-grove`,
+    `DTSTAMP:${stamp}`,
+    `DTSTART;VALUE=DATE:${compactDate(trip.leaveDate)}`,
+    `DTEND;VALUE=DATE:${compactDate(nextDay(trip.backDate))}`,
+    `SUMMARY:${escapeText(tripTitle(trip))}`,
+    "TRANSP:TRANSPARENT",
+    ...(base ? [`URL:${base}/dashboard/calendar/trips/${trip.id}`] : []),
+    "END:VEVENT",
+  ]);
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
     "PRODID:-//The Olive Grove//Mission Control//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    "X-WR-CALNAME:Olive Grove guests",
+    "X-WR-CALNAME:Olive Grove",
     "X-WR-TIMEZONE:Europe/London",
     "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
     "X-PUBLISHED-TTL:PT1H",
     ...events,
+    ...tripEvents,
     "END:VCALENDAR",
   ];
   return lines.map(fold).join("\r\n") + "\r\n";

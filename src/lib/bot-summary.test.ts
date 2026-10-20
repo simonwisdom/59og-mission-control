@@ -30,7 +30,7 @@ const share: RegularPayment = {
 };
 
 describe("botSummary", () => {
-  const base = { today: "2026-10-18", bins: [], pendingApplications: 0, stays: [], shares: null, emails: null };
+  const base = { today: "2026-10-18", bins: [], pendingApplications: 0, stays: [], trips: [], shares: null, emails: null };
 
   it("gives guests' first names only and marks which stays are confirmed", () => {
     const summary = botSummary({
@@ -45,6 +45,12 @@ describe("botSummary", () => {
       { firstName: "Ana", partySize: 2, arrivalDate: "2026-10-20", departureDate: "2026-10-22", confirmed: true },
       { firstName: "Joe", partySize: 1, arrivalDate: "2026-10-25", departureDate: "2026-10-26", confirmed: false },
     ]);
+  });
+
+  it("passes on housemates' trips with their ids, and nothing else about them", () => {
+    const trip = { id: 4, person: "Rita", leaveDate: "2026-11-02", backDate: "2026-11-06", place: "Lisbon" };
+    const summary = botSummary({ ...base, trips: [{ ...trip, updatedBy: "Simon" } as typeof trip] });
+    expect(summary.trips).toEqual([trip]);
   });
 
   it("keeps who has paid but leaves out every amount", () => {

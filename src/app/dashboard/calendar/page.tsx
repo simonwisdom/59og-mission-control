@@ -1,16 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { and, asc, gte, lte, ne } from "drizzle-orm";
 import { db } from "@/db";
-import { applications } from "@/db/schema";
-import { getSessionSecret } from "@/lib/auth";
+import { applications, trips } from "@/db/schema";
+import { getSessionSecret, sessionName } from "@/lib/auth";
+import { formatDate } from "@/lib/format";
 import { calendarFeedToken, isMonth, monthWeeks, shiftMonth } from "@/lib/guest-calendar";
+import { REVIEWER_COOKIE } from "@/lib/review";
+import { knownPeople, tripTitle } from "@/lib/trips";
 import { Crumbs } from "../crumbs";
 import { CopyLink } from "./copy-link";
 import { StayLegend, StayWeeks } from "./stay-weeks";
+import { TripForm } from "./trip-form";
 
-export const metadata: Metadata = { title: "Guest calendar" };
+export const metadata: Metadata = { title: "Calendar" };
 
 const londonToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date());
 const monthName = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
@@ -50,6 +54,19 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     )
     .orderBy(asc(applications.arrivalDate));
 
+  const [monthTrips, upcomingTrips, people] = await Promise.all([
+    db
+      .select()
+      .from(trips)
+      .where(and(lte(trips.leaveDate, lastDay), gte(trips.backDate, firstDay)))
+      .orderBy(asc(trips.leaveDate)),
+    db.select().from(trips).where(gte(trips.backDate, today)).orderBy(asc(trips.leaveDate)),
+    db.selectDistinct({ person: trips.person }).from(trips),
+  ]);
+  // Fill in who's adding a trip: the name they last signed a note with, or their login link's first
+  // word. A link can be named "the house", so the note name comes first.
+  const me = (await cookies()).get(REVIEWER_COOKIE)?.value ?? (await sessionName())?.trim().split(/\s+/)[0] ?? "";
+
   const feedPath = `/calendar/${calendarFeedToken(getSessionSecret())}/guests.ics`;
   const feedUrl = `${await siteUrl()}${feedPath}`;
   const webcalUrl = feedUrl.replace(/^https?:/, "webcal:");
@@ -59,7 +76,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     <>
       <Crumbs />
       <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="section-title">Guest calendar</h1>
+        <h1 className="section-title">Calendar</h1>
         <nav className="flex items-center gap-2 text-sm">
           <Link href={`?month=${shiftMonth(month, -1)}`} className="rounded-[2px] border border-line px-2 py-1 hover:border-tile" aria-label="Previous month">
             ←
@@ -82,13 +99,39 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           All applications →
         </Link>
       </div>
-      <StayWeeks weeks={weeks} stays={stays} today={today} month={month} />
+      <StayWeeks weeks={weeks} stays={stays} trips={monthTrips} today={today} month={month} />
+
+      <section className="card mt-8">
+        <h2 className="hand text-lg">Going away?</h2>
+        <p className="mt-1 mb-3 text-sm text-muted">
+          Add your trip so the house knows who&apos;s in. Everyone in the house can see it, and Grovelet tells
+          anyone who asks.
+        </p>
+        <TripForm defaults={{ person: me }} people={knownPeople(people.map((p) => p.person))} />
+        {upcomingTrips.length > 0 && (
+          <>
+            <h3 className="mt-6 text-sm font-medium">Trips coming up</h3>
+            <ul className="mt-1 divide-y divide-line text-sm">
+              {upcomingTrips.map((trip) => (
+                <li key={trip.id}>
+                  <Link href={`/dashboard/calendar/trips/${trip.id}`} className="flex flex-wrap justify-between gap-x-3 py-2 hover:text-pillar">
+                    <span className="font-medium">{tripTitle(trip)}</span>
+                    <span className="text-muted">
+                      {formatDate(trip.leaveDate)} to {formatDate(trip.backDate)}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
 
       <section className="card mt-8">
         <h2 className="hand text-lg">Add to your own calendar</h2>
         <p className="mt-1 text-sm text-muted">
-          Subscribe once and new guests appear in your calendar by themselves. Requested stays show as
-          &ldquo;Requested: name&rdquo; until they&apos;re approved; declined ones drop off.
+          Subscribe once and new guests and housemates&apos; trips appear in your calendar by themselves.
+          Requested stays show as &ldquo;Requested: name&rdquo; until they&apos;re approved; declined ones drop off.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <a href={webcalUrl} className="rounded-[2px] bg-foreground px-3 py-1.5 text-sm text-background hover:opacity-90">

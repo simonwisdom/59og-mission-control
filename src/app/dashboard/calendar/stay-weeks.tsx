@@ -1,21 +1,28 @@
 import Link from "next/link";
+import type { Trip } from "@/db/schema";
 import { stayTitle, type Stay } from "@/lib/guest-calendar";
+import { tripTitle } from "@/lib/trips";
+
+export type CalendarTrip = Pick<Trip, "id" | "person" | "leaveDate" | "backDate" | "place">;
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const shortMonth = new Intl.DateTimeFormat("en-GB", { month: "short", timeZone: "UTC" });
 
-// Weeks of days with each stay drawn as a bar across the days it covers. The calendar page
+// Weeks of days with each stay drawn as a bar across the days it covers, and housemates' trips
+// as outlined bars under them. The calendar page
 // passes the month it shows, so days outside it fade; the dashboard shows a run of weeks
 // instead and names the month on the first day of each.
 export function StayWeeks({
   weeks,
   stays,
+  trips = [],
   today,
   month,
   compact = false,
 }: {
   weeks: string[][];
   stays: Stay[];
+  trips?: CalendarTrip[];
   today: string;
   month?: string;
   compact?: boolean;
@@ -31,6 +38,7 @@ export function StayWeeks({
       </div>
       {weeks.map((week, weekIndex) => {
         const weekStays = stays.filter((s) => s.arrivalDate <= week[6] && s.departureDate >= week[0]);
+        const weekTrips = trips.filter((t) => t.leaveDate <= week[6] && t.backDate >= week[0]);
         return (
           <div
             key={week[0]}
@@ -75,6 +83,20 @@ export function StayWeeks({
                 </Link>
               );
             })}
+            {tripLanes(weekTrips, week).map(({ trip, start, end, lane }) => {
+              return (
+                <Link
+                  key={`trip-${trip.id}`}
+                  href={`/dashboard/calendar/trips/${trip.id}`}
+                  title={tripTitle(trip)}
+                  style={{ gridColumn: `${start + 1} / ${end + 2}`, gridRow: weekStays.length + lane + 2 }}
+                  className="mx-0.5 truncate rounded-[2px] border border-ink/50 bg-card px-1.5 py-0.5 text-xs text-ink hover:border-tile"
+                >
+                  {trip.leaveDate < week[0] && end > start && "… "}
+                  {compact ? (end > start ? `${trip.person} away` : trip.person) : tripTitle(trip)}
+                </Link>
+              );
+            })}
           </div>
         );
       })}
@@ -82,15 +104,33 @@ export function StayWeeks({
   );
 }
 
+// Each trip's days in the week, on the first row free of other trips, so trips that don't overlap
+// share a row. Trips come sorted by leaving date.
+function tripLanes(trips: CalendarTrip[], week: string[]) {
+  const laneEnds: number[] = [];
+  return trips.map((trip) => {
+    const start = Math.max(0, week.indexOf(trip.leaveDate));
+    const endIndex = week.indexOf(trip.backDate);
+    const end = endIndex === -1 ? 6 : endIndex;
+    let lane = laneEnds.findIndex((laneEnd) => laneEnd < start);
+    if (lane === -1) lane = laneEnds.length;
+    laneEnds[lane] = end;
+    return { trip, start, end, lane };
+  });
+}
+
 export function StayLegend({ className = "" }: { className?: string }) {
   return (
-    <div className={`flex gap-4 text-muted ${className}`}>
+    <div className={`flex flex-wrap gap-x-4 gap-y-1 text-muted ${className}`}>
       <span className="flex items-center gap-1.5">
         <span className="inline-block h-3 w-5 rounded-[2px] bg-tile" /> Confirmed
       </span>
       <span className="flex items-center gap-1.5">
         <span className="inline-block h-3 w-5 rounded-[2px] border border-dashed border-amber-600 bg-amber-100 dark:bg-amber-900/40" />{" "}
         Requested
+      </span>
+      <span className="flex items-center gap-1.5">
+        <span className="inline-block h-3 w-5 rounded-[2px] border border-ink/50 bg-card" /> Housemate away
       </span>
     </div>
   );

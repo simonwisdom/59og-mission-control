@@ -97,6 +97,16 @@ describe("guest feed", () => {
     expect(guestFeed([stay()], { now })).not.toContain("URL:");
   });
 
+  it("adds housemates' trips through the day they're back", () => {
+    const trip = { id: 4, person: "Rita", leaveDate: "2026-11-02", backDate: "2026-11-06", place: "Lisbon, Portugal" };
+    const feed = guestFeed([], { now, trips: [trip], appUrl: "https://example.com" });
+    expect(feed).toContain("UID:housemate-trip-4@olive-grove\r\n");
+    expect(feed).toContain("DTSTART;VALUE=DATE:20261102\r\n");
+    expect(feed).toContain("DTEND;VALUE=DATE:20261107\r\n");
+    expect(feed).toContain("SUMMARY:Rita away · Lisbon\\, Portugal\r\n");
+    expect(feed).toContain("URL:https://example.com/dashboard/calendar/trips/4\r\n");
+  });
+
   it("folds long lines at 75 bytes", () => {
     const feed = guestFeed([stay({ name: "A".repeat(200) })], { now });
     for (const line of feed.split("\r\n")) expect(Buffer.byteLength(line)).toBeLessThanOrEqual(75);

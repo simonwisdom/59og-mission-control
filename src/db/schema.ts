@@ -132,7 +132,25 @@ export const emails = pgTable("emails", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// Housemates' trips away, on the calendar beside guests. Every housemate can see and change all of
+// them; Grovelet tells anyone in the house who asks.
+export const trips = pgTable("trips", {
+  id: serial("id").primaryKey(),
+  // A first name, as typed, so Grovelet can match it to the housemate it's chatting with
+  person: text("person").notNull(),
+  // The first day away and the day they're back
+  leaveDate: date("leave_date").notNull(),
+  backDate: date("back_date").notNull(),
+  // Where they're going, if they said
+  place: text("place"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  // The login link's name, "Grovelet", or null after a password login
+  updatedBy: text("updated_by"),
+});
+
 export type Application =typeof applications.$inferSelect;
+export type Trip = typeof trips.$inferSelect;
 export type Note = typeof notes.$inferSelect;
 export type Page = typeof pages.$inferSelect;
 export type Email = typeof emails.$inferSelect;
