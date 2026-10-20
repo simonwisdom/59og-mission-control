@@ -89,8 +89,8 @@ export default async function MemoryPage() {
           </p>
           <ul className="card divide-y divide-line py-1">
             {history.map(({ row, at, what }) => (
-              <li key={row.id} className="flex flex-wrap items-baseline justify-between gap-3 py-2.5">
-                <span className="min-w-0 flex-1">
+              <li key={row.id} className="flex flex-col gap-1 py-2.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+                <span className="min-w-0 sm:flex-1">
                   {row.kind === "document" ? (
                     <details>
                       <summary className="cursor-pointer font-medium">{row.title}</summary>

@@ -6,7 +6,8 @@
 // Checks every main page loads at phone width without errors or sideways scroll, that booked
 // nights on the apply calendar can't be picked, and that a test application can be sent and
 // shows up on the dashboard, and that a housemate's trip can be added, changed and deleted from the
-// calendar. Its test rows (an approved stay, the application and the trip) are deleted
+// calendar, and that a memory note can be added, edited, forgotten, brought back and deleted for
+// good. Its test rows (an approved stay, the application, the trip and the notes) are deleted
 // at the end. It refuses to run unless .env points at a database on this Mac, and blanks
 // NTFY_TOPIC so housemates' phones don't get a notification. With OUT_DIR, saves a screenshot
 // of each page there.
@@ -42,7 +43,9 @@ const PAGES = [
   "/dashboard/email",
   "/dashboard/pages",
   "/dashboard/login-links",
+  "/dashboard/memory",
 ];
+const TEST_NOTE = "E2E memory note";
 
 const failures = [];
 async function check(name, fn) {
@@ -193,6 +196,45 @@ try {
     const left = await sql`select id from trips where person = ${TEST_PERSON}`;
     expect(left.length === 0, `${left.length} test trips left after deleting`);
   });
+
+  await check("a memory note can be added, edited, forgotten, brought back and deleted", async () => {
+    const live = () => sql`select body from memories where body like ${`${TEST_NOTE}%`} and replaced_at is null and removed_at is null`;
+    await page.goto(`${base}/dashboard/memory`, { waitUntil: "networkidle" });
+    await page.getByLabel("Note").fill(`${TEST_NOTE}, first`);
+    await page.getByRole("button", { name: "Add note" }).click();
+    const note = page.locator("li", { hasText: `${TEST_NOTE}, first` });
+    await note.waitFor({ timeout: 30_000 });
+
+    await note.getByRole("button", { name: "Edit" }).click();
+    await note.locator("textarea").fill(`${TEST_NOTE}, edited`);
+    await note.getByRole("button", { name: "Save" }).click();
+    const edited = page.locator("li", { hasText: `${TEST_NOTE}, edited` }).first();
+    await edited.waitFor({ timeout: 30_000 });
+    expect((await live()).map((r) => r.body).join() === `${TEST_NOTE}, edited`, "the edit isn't the one live note");
+
+    await edited.getByRole("button", { name: "Forget" }).click();
+    await edited.getByRole("button", { name: "Forget" }).click();
+    await page.getByText(/^History \(/).click();
+    const forgotten = page.locator("li", { hasText: `${TEST_NOTE}, edited` }).last();
+    await forgotten.getByText(/Forgotten/).waitFor({ timeout: 30_000 });
+    expect((await live()).length === 0, "a forgotten note is still live");
+
+    await forgotten.getByRole("button", { name: "Bring back" }).click();
+    for (let i = 0; i < 30 && (await live()).length === 0; i++) await new Promise((r) => setTimeout(r, 500));
+    expect((await live()).length === 1, "Bring back didn't make it live again");
+
+    await page.goto(`${base}/dashboard/memory`, { waitUntil: "networkidle" });
+    await page.getByText(/^History \(/).click();
+    const older = page.locator("li", { hasText: `${TEST_NOTE}, first` }).last();
+    await older.getByRole("button", { name: "Delete for good" }).click();
+    await older.getByRole("button", { name: "Delete", exact: true }).click();
+    for (let i = 0; i < 30; i++) {
+      const [{ n }] = await sql`select count(*)::int n from memories where body = ${`${TEST_NOTE}, first`}`;
+      if (n === 0) return;
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    throw new Error("Delete for good left the row");
+  });
 } catch (error) {
   failures.push("setup");
   console.error(error.message);
@@ -200,6 +242,7 @@ try {
   const deleted = await sql`delete from applications where email = ${TEST_EMAIL} returning id`;
   if (deleted.length) console.log(`     removed ${deleted.length} test applications`);
   await sql`delete from trips where person = ${TEST_PERSON}`;
+  await sql`delete from memories where body like ${`${TEST_NOTE}%`}`;
   await sql.end();
   await browser.close();
   server.kill();
