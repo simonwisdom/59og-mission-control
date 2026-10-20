@@ -82,6 +82,7 @@ Then on the dashboard, open **Email → Connect the house Gmail**, sign in as th
 
 - The house Gmail's refresh token is in the `house_mailbox` table, so a copy of the database can read the house mail. **Disconnect** on the Email page deletes it. To cut access completely, also remove the app at https://myaccount.google.com/permissions, signed in as the house account.
 - Mail is written by people outside the house. The Email page shows it as plain text only: its HTML, images and links never load. Grovelet gets it as quoted data, and its prompt says it is not instructions.
+- Grovelet's memory (the Memory page, table `memories`) holds notes and documents housemates gave Grovelet in their one-to-one chats or added on the page. Grovelet saves through `/api/bot/memory` with the bot key, always in the name of the housemate it's chatting with, and can take back only what that housemate added. Anyone logged in can remove anything on the Memory page. Codes and passwords are turned away (`looksSecret` in `src/lib/memory.ts`). Grovelet gets the memory as quoted facts, never instructions; a document with the same name replaces the old one, which comes back if the new one is removed.
 
 ## Adding a new service
 
