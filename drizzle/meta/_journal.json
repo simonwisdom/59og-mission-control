@@ -43,6 +43,13 @@
       "when": 1792500767485,
       "tag": "0005_add_trips",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792512474465,
+      "tag": "0006_add_memories",
+      "breakpoints": true
     }
   ]
 }

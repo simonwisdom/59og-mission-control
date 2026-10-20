@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { and, asc, count, eq, gt, gte, lte, ne } from "drizzle-orm";
+import { and, asc, count, eq, gt, gte, isNull, lte, ne } from "drizzle-orm";
 import { db } from "@/db";
-import { applications, trips } from "@/db/schema";
+import { applications, memories, trips } from "@/db/schema";
 import { getHouseFinances, isActualConfigured, type RegularPayment } from "@/lib/actual";
 import { isGmailConfigured } from "@/lib/gmail";
 import { getMailbox, recentEmails } from "@/lib/house-mail";
@@ -95,6 +95,15 @@ async function MoneySummary() {
   );
 }
 
+// "2 documents and 5 notes"
+function memoryCount(rows: { kind: string }[]) {
+  const documents = rows.filter((row) => row.kind === "document").length;
+  const notes = rows.length - documents;
+  if (rows.length === 0) return "Notes and documents housemates give Grovelet, such as the guest policy";
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  return [documents && plural(documents, "document"), notes && plural(notes, "note")].filter(Boolean).join(" and ");
+}
+
 // "3 of 4 shares paid"
 const checked = (payments: RegularPayment[], what: string) =>
   `${payments.filter((p) => p.status === "paid").length} of ${payments.length} ${what}`;
@@ -145,7 +154,7 @@ export default async function DashboardHome() {
     departureDate: applications.departureDate,
     status: applications.status,
   };
-  const [[{ pending }], stays, [later], weekTrips] = await Promise.all([
+  const [[{ pending }], stays, [later], weekTrips, remembered] = await Promise.all([
     db.select({ pending: count() }).from(applications).where(eq(applications.status, "pending")),
     db
       .select(stayFields)
@@ -170,6 +179,7 @@ export default async function DashboardHome() {
       .from(trips)
       .where(and(lte(trips.leaveDate, lastDay), gte(trips.backDate, firstDay)))
       .orderBy(asc(trips.leaveDate)),
+    db.select({ kind: memories.kind }).from(memories).where(isNull(memories.replacedAt)),
   ]);
 
   return (
@@ -210,6 +220,10 @@ export default async function DashboardHome() {
               </Suspense>
             </Link>
           )}
+          <Link href="/dashboard/memory" className="card block hover:border-tile">
+            <h2 className="hand text-lg">Grovelet&apos;s memory</h2>
+            <p className="mt-1 text-sm text-muted">{memoryCount(remembered)}</p>
+          </Link>
           {isActualConfigured() && (
             <Link href="/dashboard/money" className="card block hover:border-tile">
               <h2 className="hand text-lg">House money</h2>

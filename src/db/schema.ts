@@ -149,7 +149,24 @@ export const trips = pgTable("trips", {
   updatedBy: text("updated_by"),
 });
 
+// Grovelet's memory: short notes and whole documents (such as the guest policy) that housemates gave
+// it in chat or added on the Memory page. Grovelet gets them as quoted facts, never as instructions.
+// A document with the same title as a live one replaces it; the old one keeps its row, with
+// replacedAt set, so an undo can bring it back.
+export const memories = pgTable("memories", {
+  id: serial("id").primaryKey(),
+  kind: text("kind").$type<"note" | "document">().notNull(),
+  // A document's name, e.g. "Guest policy"; null for a note
+  title: text("title"),
+  body: text("body").notNull(),
+  // A first name: the housemate Grovelet was chatting with, or the login link's name
+  addedBy: text("added_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  replacedAt: timestamp("replaced_at", { withTimezone: true }),
+});
+
 export type Application =typeof applications.$inferSelect;
+export type Memory = typeof memories.$inferSelect;
 export type Trip = typeof trips.$inferSelect;
 export type Note = typeof notes.$inferSelect;
 export type Page = typeof pages.$inferSelect;
