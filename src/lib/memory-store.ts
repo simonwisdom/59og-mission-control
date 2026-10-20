@@ -26,12 +26,23 @@ export async function saveMemory(input: MemoryInput) {
   });
 }
 
-// Removes a note or document. Removing a document brings back the one it replaced, if any, so
-// undoing a new version leaves the house with the old one rather than none.
-export async function removeMemory(row: Memory) {
+// Removes a note or document. Grovelet's undo brings back the document it replaced, if any, so
+// undoing a new version leaves the house with the old one rather than none. Forget on the Memory
+// page removes the document and every older version of it, so nothing comes back.
+export async function removeMemory(row: Memory, how: "undo" | "forget") {
   await db.transaction(async (tx) => {
     await tx.delete(memories).where(eq(memories.id, row.id));
     if (row.kind !== "document" || row.replacedAt) return;
+    if (how === "forget") {
+      const older = await tx
+        .select()
+        .from(memories)
+        .where(and(eq(memories.kind, "document"), isNotNull(memories.replacedAt)));
+      for (const old of older.filter((o) => sameTitle(o.title, row.title))) {
+        await tx.delete(memories).where(eq(memories.id, old.id));
+      }
+      return;
+    }
     const replaced = await tx
       .select()
       .from(memories)

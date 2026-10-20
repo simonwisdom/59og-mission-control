@@ -11,9 +11,11 @@ export const DOCUMENT_LIMIT = 60_000;
 export type MemoryInput = Pick<Memory, "kind" | "title" | "body" | "addedBy">;
 export type MemoryErrors = Partial<Record<keyof MemoryInput, string>>;
 
-// "the door code is 4471", "wifi password: olives22", "PIN 1234": a code or password with its value.
-// Saying a code exists ("we give guests the door code on arrival") is fine.
-const SECRET = /\b(pass ?word|passcode|pin|door code|alarm code|lock code|key ?safe code|sort code|account number|card number|iban)\b\W{0,3}(is\b|=)?\W{0,3}[^\s]*\d/i;
+// A code or password with its value: "the front door's code is 4471", "Wifi: OliveGrove22",
+// "PIN 1234". A best-effort filter, not a guarantee; saying a code exists ("we give guests the
+// door code on arrival") is fine. Grovelet's memory.py has the same pattern.
+const SECRET =
+  /\b(codes?|pass ?words?|passcodes?|pins?|wi-?fi|lockbox|key ?safe|account number|card number|iban)\b[^.\n]{0,30}?((\bis\b|:|=)\s*\S*\d|\s\d{3,})/i;
 
 export function looksSecret(text: string) {
   return SECRET.test(text);

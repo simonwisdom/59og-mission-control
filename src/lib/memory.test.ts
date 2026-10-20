@@ -41,11 +41,16 @@ describe("looksSecret", () => {
     expect(looksSecret("wifi password: olives22")).toBe(true);
     expect(looksSecret("PIN 1234")).toBe(true);
     expect(looksSecret("key safe code = 0912")).toBe(true);
+    expect(looksSecret("The front door's code is 4471")).toBe(true);
+    expect(looksSecret("Wifi: OliveGrove22")).toBe(true);
+    expect(looksSecret("The lockbox code is 1234")).toBe(true);
+    expect(looksSecret("The PIN for the alarm is 9921")).toBe(true);
   });
 
   it("lets through a mention of a code without one", () => {
     expect(looksSecret("We give guests the door code on arrival.")).toBe(false);
     expect(looksSecret("Guests can stay 3 nights, 2 at weekends.")).toBe(false);
+    expect(looksSecret("The wifi router is in the hall.")).toBe(false);
   });
 });
 

@@ -16,7 +16,7 @@ export async function DELETE(request: Request, ctx: RouteContext<"/api/bot/memor
   if (!addedBy || !row.addedBy || !samePerson(row.addedBy, addedBy)) {
     return Response.json({ error: "Only the housemate who added it can take it back through Grovelet" }, { status: 403 });
   }
-  await removeMemory(row);
+  await removeMemory(row, "undo");
   revalidatePath("/dashboard", "layout");
   return new Response(null, { status: 204 });
 }

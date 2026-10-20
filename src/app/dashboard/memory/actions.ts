@@ -22,6 +22,6 @@ export async function addMemory(kind: "note" | "document", _prev: MemoryFormStat
 export async function deleteMemory(id: number) {
   await requireSession();
   const row = await findMemory(id);
-  if (row) await removeMemory(row);
+  if (row) await removeMemory(row, "forget");
   revalidatePath("/dashboard", "layout");
 }
