@@ -1,20 +1,26 @@
 import type { Metadata } from "next";
+import type { Memory } from "@/db/schema";
 import { requireSession } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
-import { liveMemories } from "@/lib/memory-store";
+import { isLive, memoryHistory } from "@/lib/memory";
+import { allMemories } from "@/lib/memory-store";
 import { Crumbs } from "../crumbs";
-import { ForgetButton, MemoryForm } from "./memory-forms";
+import { ForgetButton, HistoryButtons, MemoryForm, NoteItem } from "./memory-forms";
 
 export const metadata: Metadata = { title: "Memory" };
 
+const added = (row: Memory) => `${row.addedBy ? `${row.addedBy}, ` : ""}${formatDate(row.createdAt)}`;
+
 // Everything Grovelet remembers for the house: what housemates told it in chat, and what was added
-// here. Grovelet reads it as facts, never as instructions.
+// here. Grovelet reads it as facts, never as instructions. History holds what was forgotten or
+// replaced, so any change can be undone; Grovelet never reads History.
 export default async function MemoryPage() {
   await requireSession();
-  const rows = await liveMemories();
-  const documents = rows.filter((row) => row.kind === "document");
-  const notes = rows.filter((row) => row.kind === "note");
-  const added = (row: (typeof rows)[number]) => `${row.addedBy ? `${row.addedBy}, ` : ""}${formatDate(row.createdAt)}`;
+  const rows = await allMemories();
+  const live = rows.filter(isLive);
+  const documents = live.filter((row) => row.kind === "document");
+  const notes = live.filter((row) => row.kind === "note");
+  const history = memoryHistory(rows);
 
   return (
     <>
@@ -54,12 +60,8 @@ export default async function MemoryPage() {
         ) : (
           <ul className="card divide-y divide-line py-1">
             {notes.map((row) => (
-              <li key={row.id} className="flex items-baseline justify-between gap-3 py-2.5">
-                <span className="min-w-0">
-                  <span className="block whitespace-pre-wrap">{row.body}</span>
-                  <span className="block text-sm text-muted">{added(row)}</span>
-                </span>
-                <ForgetButton id={row.id} what="note" />
+              <li key={row.id} className="py-2.5">
+                <NoteItem id={row.id} body={row.body} added={added(row)} />
               </li>
             ))}
           </ul>
@@ -77,6 +79,36 @@ export default async function MemoryPage() {
           <p className="mt-3 text-xs text-muted">A document with the same name as one already here replaces it.</p>
         </section>
       </div>
+
+      {history.length > 0 && (
+        <details className="mt-8">
+          <summary className="section-title cursor-pointer">History ({history.length})</summary>
+          <p className="mt-2 mb-3 max-w-2xl text-sm text-muted">
+            Forgotten notes and documents, and older versions. Grovelet doesn&apos;t read these. Bring one back to make it
+            the live version again.
+          </p>
+          <ul className="card divide-y divide-line py-1">
+            {history.map(({ row, at, what }) => (
+              <li key={row.id} className="flex flex-wrap items-baseline justify-between gap-3 py-2.5">
+                <span className="min-w-0 flex-1">
+                  {row.kind === "document" ? (
+                    <details>
+                      <summary className="cursor-pointer font-medium">{row.title}</summary>
+                      <p className="mt-2 whitespace-pre-wrap text-sm">{row.body}</p>
+                    </details>
+                  ) : (
+                    <span className="block whitespace-pre-wrap">{row.body}</span>
+                  )}
+                  <span className="block text-sm text-muted">
+                    Added by {added(row)} · {what}, {formatDate(at)}
+                  </span>
+                </span>
+                <HistoryButtons id={row.id} />
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </>
   );
 }

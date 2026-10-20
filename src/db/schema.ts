@@ -150,9 +150,10 @@ export const trips = pgTable("trips", {
 });
 
 // Grovelet's memory: short notes and whole documents (such as the guest policy) that housemates gave
-// it in chat or added on the Memory page. Grovelet gets them as quoted facts, never as instructions.
-// A document with the same title as a live one replaces it; the old one keeps its row, with
-// replacedAt set, so an undo can bring it back.
+// it in chat or added on the Memory page. Grovelet gets the live ones as quoted facts, never as
+// instructions. Nothing is deleted unless someone asks for that in History: a new version of a
+// document, an edited note or a correction replaces the old row (replacedAt), and Forget hides
+// one (removedAt), so History can show it and bring it back.
 export const memories = pgTable("memories", {
   id: serial("id").primaryKey(),
   kind: text("kind").$type<"note" | "document">().notNull(),
@@ -162,7 +163,13 @@ export const memories = pgTable("memories", {
   // A first name: the housemate Grovelet was chatting with, or the login link's name
   addedBy: text("added_by"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  // The first version's id, shared by every version of the same note or document; null on the
+  // first version itself
+  chainId: integer("chain_id"),
   replacedAt: timestamp("replaced_at", { withTimezone: true }),
+  replacedBy: text("replaced_by"),
+  removedAt: timestamp("removed_at", { withTimezone: true }),
+  removedBy: text("removed_by"),
 });
 
 export type Application =typeof applications.$inferSelect;

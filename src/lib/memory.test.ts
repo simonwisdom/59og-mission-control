@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Memory } from "@/db/schema";
-import { botMemory, DOCUMENT_LIMIT, looksSecret, NOTE_LIMIT, parseMemory, sameTitle } from "./memory";
+import { botMemory, chainOf, DOCUMENT_LIMIT, looksSecret, memoryHistory, NOTE_LIMIT, parseMemory, sameTitle } from "./memory";
 
 describe("parseMemory", () => {
   it("accepts a note and drops any title it came with", () => {
@@ -61,23 +61,49 @@ describe("sameTitle", () => {
   });
 });
 
-describe("botMemory", () => {
-  const row = (fields: Partial<Memory>): Memory => ({
-    id: 1,
-    kind: "note",
-    title: null,
-    body: "",
-    addedBy: "Rita",
-    createdAt: new Date("2026-10-20T09:00:00Z"),
-    replacedAt: null,
-    ...fields,
+const row = (fields: Partial<Memory>): Memory => ({
+  id: 1,
+  kind: "note",
+  title: null,
+  body: "",
+  addedBy: "Rita",
+  createdAt: new Date("2026-10-20T09:00:00Z"),
+  chainId: null,
+  replacedAt: null,
+  replacedBy: null,
+  removedAt: null,
+  removedBy: null,
+  ...fields,
+});
+
+describe("memoryHistory", () => {
+  it("lists forgotten and replaced rows, latest change first, saying what happened", () => {
+    const history = memoryHistory([
+      row({ id: 1, body: "Live" }),
+      row({ id: 2, body: "Old", replacedAt: new Date("2026-10-21T00:00:00Z"), replacedBy: "Alex" }),
+      row({ id: 3, body: "Gone", removedAt: new Date("2026-10-22T00:00:00Z"), removedBy: "Rita" }),
+      row({ id: 4, body: "Gone too", removedAt: new Date("2026-10-20T12:00:00Z") }),
+    ]);
+    expect(history.map((entry) => [entry.row.id, entry.what])).toEqual([
+      [3, "Forgotten by Rita"],
+      [2, "Replaced by a newer version from Alex"],
+      [4, "Forgotten"],
+    ]);
   });
 
-  it("splits live notes and documents, oldest first, and leaves out replaced documents", () => {
+  it("keeps every version of a chain together by its first id", () => {
+    expect(chainOf(row({ id: 7, chainId: null }))).toBe(7);
+    expect(chainOf(row({ id: 9, chainId: 7 }))).toBe(7);
+  });
+});
+
+describe("botMemory", () => {
+  it("splits live notes and documents, oldest first, and leaves out replaced and forgotten ones", () => {
     expect(
       botMemory([
         row({ id: 3, kind: "document", title: "Guest policy", body: "New", createdAt: new Date("2026-10-19T00:00:00Z") }),
         row({ id: 2, kind: "document", title: "Guest policy", body: "Old", replacedAt: new Date() }),
+        row({ id: 6, body: "Forgotten", removedAt: new Date() }),
         row({ id: 5, body: "Second", createdAt: new Date("2026-10-21T00:00:00Z") }),
         row({ id: 4, body: "First" }),
       ]),

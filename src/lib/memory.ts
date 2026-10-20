@@ -73,9 +73,37 @@ export type BotMemory = {
   documents: { id: number; title: string; text: string; addedBy: string | null; date: string }[];
 };
 
+// Live: neither replaced by a newer version nor forgotten. Only these reach Grovelet.
+export function isLive(row: Pick<Memory, "replacedAt" | "removedAt">) {
+  return !row.replacedAt && !row.removedAt;
+}
+
+// Every version of a note or document shares this
+export function chainOf(row: Pick<Memory, "id" | "chainId">) {
+  return row.chainId ?? row.id;
+}
+
+export type HistoryEntry = { row: Memory; at: Date; what: string };
+
+// What History shows: forgotten and replaced notes and documents, latest change first, each with
+// what happened to it, e.g. "Forgotten by Rita" or "Replaced by a newer version from Alex"
+export function memoryHistory(rows: Memory[]): HistoryEntry[] {
+  return rows
+    .filter((row) => !isLive(row))
+    .map((row) => {
+      const at = (row.removedAt ?? row.replacedAt)!;
+      const who = row.removedAt ? row.removedBy : row.replacedBy;
+      const what = row.removedAt
+        ? `Forgotten${who ? ` by ${who}` : ""}`
+        : `Replaced by a newer version${who ? ` from ${who}` : ""}`;
+      return { row, at, what };
+    })
+    .sort((a, b) => b.at.getTime() - a.at.getTime());
+}
+
 // What Grovelet reads: every live note and document, oldest first, with who added it and when
 export function botMemory(rows: Memory[]): BotMemory {
-  const live = rows.filter((row) => !row.replacedAt).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  const live = rows.filter(isLive).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   const date = (row: Memory) => row.createdAt.toISOString().slice(0, 10);
   return {
     notes: live.filter((row) => row.kind === "note").map((row) => ({ id: row.id, text: row.body, addedBy: row.addedBy, date: date(row) })),

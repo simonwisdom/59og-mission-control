@@ -179,7 +179,10 @@ export default async function DashboardHome() {
       .from(trips)
       .where(and(lte(trips.leaveDate, lastDay), gte(trips.backDate, firstDay)))
       .orderBy(asc(trips.leaveDate)),
-    db.select({ kind: memories.kind }).from(memories).where(isNull(memories.replacedAt)),
+    db
+      .select({ kind: memories.kind })
+      .from(memories)
+      .where(and(isNull(memories.replacedAt), isNull(memories.removedAt))),
   ]);
 
   return (

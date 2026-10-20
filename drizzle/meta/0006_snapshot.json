@@ -1,5 +1,5 @@
 {
-  "id": "633c8e14-ccf2-4117-ab27-54396f8e07c0",
+  "id": "88bd225a-114c-4c4d-b8e5-df53dbf13227",
   "prevId": "a5db76a7-e225-4441-be42-7bb61a617749",
   "version": "7",
   "dialect": "postgresql",
@@ -372,9 +372,33 @@
           "notNull": true,
           "default": "now()"
         },
+        "chain_id": {
+          "name": "chain_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "replaced_at": {
           "name": "replaced_at",
           "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "replaced_by": {
+          "name": "replaced_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "removed_at": {
+          "name": "removed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "removed_by": {
+          "name": "removed_by",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         }

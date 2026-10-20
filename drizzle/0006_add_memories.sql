@@ -5,5 +5,9 @@ CREATE TABLE "memories" (
 	"body" text NOT NULL,
 	"added_by" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"replaced_at" timestamp with time zone
+	"chain_id" integer,
+	"replaced_at" timestamp with time zone,
+	"replaced_by" text,
+	"removed_at" timestamp with time zone,
+	"removed_by" text
 );
