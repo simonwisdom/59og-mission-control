@@ -2,8 +2,9 @@ import { and, asc, count, eq, gte, lte, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { applications } from "@/db/schema";
 import { getHouseFinances } from "@/lib/actual";
-import { botSummary, botTokenMatches } from "@/lib/bot-summary";
+import { EMAIL_DAYS, botSummary, botTokenMatches } from "@/lib/bot-summary";
 import { getBinCollections } from "@/lib/hackney-bins";
+import { getMailbox, recentEmails, syncHouseMailWithin } from "@/lib/house-mail";
 
 // The read-only feed Grovelet, the house chat bot, reads. It sits outside /dashboard because the
 // bot can't log in; BOT_API_TOKEN is the check instead, and the feed is off until it's set.
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
 
   const today = londonToday();
   const until = new Date(Date.parse(`${today}T00:00:00Z`) + STAY_DAYS * 86_400_000).toISOString().slice(0, 10);
-  const [[{ pending }], stays, bins, money] = await Promise.all([
+  const [[{ pending }], stays, bins, money, mail] = await Promise.all([
     db.select({ pending: count() }).from(applications).where(eq(applications.status, "pending")),
     db
       .select({
@@ -41,6 +42,7 @@ export async function GET(request: Request) {
       .orderBy(asc(applications.arrivalDate)),
     getBinCollections(today),
     getHouseFinances(),
+    houseMail(),
   ]);
 
   const summary = botSummary({
@@ -49,6 +51,15 @@ export async function GET(request: Request) {
     pendingApplications: pending,
     stays,
     shares: money.status === "ok" ? money.shares : null,
+    emails: mail,
   });
   return Response.json(summary, { headers: { "Cache-Control": "private, no-store" } });
+}
+
+// The last two weeks of the house Gmail, after checking for new mail for up to 5 seconds so the bot
+// isn't kept waiting; null when the account isn't connected
+async function houseMail() {
+  if (!(await getMailbox())) return null;
+  await syncHouseMailWithin(5000);
+  return recentEmails(15, new Date(Date.now() - EMAIL_DAYS * 86_400_000));
 }

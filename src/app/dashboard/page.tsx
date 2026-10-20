@@ -5,6 +5,8 @@ import { and, asc, count, eq, gt, gte, lte, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { applications } from "@/db/schema";
 import { getHouseFinances, isActualConfigured, type RegularPayment } from "@/lib/actual";
+import { isGmailConfigured } from "@/lib/gmail";
+import { getMailbox, recentEmails } from "@/lib/house-mail";
 import { formatDate, formatPence } from "@/lib/format";
 import { weeksFrom } from "@/lib/guest-calendar";
 import { getBinCollections, type Collection } from "@/lib/hackney-bins";
@@ -97,6 +99,24 @@ async function MoneySummary() {
 const checked = (payments: RegularPayment[], what: string) =>
   `${payments.filter((p) => p.status === "paid").length} of ${payments.length} ${what}`;
 
+// What's stored; the Email page itself checks Gmail for new mail
+async function MailSummary() {
+  const mailbox = await getMailbox();
+  if (!mailbox) return <p className="mt-1 text-sm text-muted">Connect the house Gmail to read it here</p>;
+  const [latest] = await recentEmails(1);
+  return (
+    <p className="mt-1 truncate text-sm text-muted">
+      {latest ? (
+        <>
+          Latest: <span className="text-foreground">{latest.fromName}</span>, {latest.subject}
+        </>
+      ) : (
+        mailbox.address
+      )}
+    </p>
+  );
+}
+
 async function EnergyWeek() {
   // Two days more than shown, so partly read days at either end can be dropped
   const energy = await getEnergyUsage(9);
@@ -177,6 +197,14 @@ export default async function DashboardHome() {
               <EnergyWeek />
             </Suspense>
           </Link>
+          {isGmailConfigured() && (
+            <Link href="/dashboard/email" className="card block hover:border-tile">
+              <h2 className="hand text-lg">Email</h2>
+              <Suspense fallback={<p className="mt-1 text-sm text-muted">Opening the post…</p>}>
+                <MailSummary />
+              </Suspense>
+            </Link>
+          )}
           {isActualConfigured() && (
             <Link href="/dashboard/money" className="card block hover:border-tile">
               <h2 className="hand text-lg">House money</h2>

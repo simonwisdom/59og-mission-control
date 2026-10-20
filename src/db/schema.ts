@@ -3,6 +3,7 @@ import {
   customType,
   date,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   serial,
@@ -88,7 +89,51 @@ export const pageImages = pgTable("page_images", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// The house's shared Gmail account, connected from the dashboard with read-only access. One row at
+// most. The refresh token lets the server read the mailbox, so disconnecting deletes the row.
+export const houseMailbox = pgTable("house_mailbox", {
+  id: serial("id").primaryKey(),
+  address: text("address").notNull(),
+  refreshToken: text("refresh_token").notNull(),
+  // Where the next sync starts: Gmail's history id once the first 30 days are in. While those are
+  // still coming in, the page of the message list to fetch next and the history id from before it.
+  historyId: text("history_id"),
+  backfillPageToken: text("backfill_page_token"),
+  backfillHistoryId: text("backfill_history_id"),
+  lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+  lastError: text("last_error"),
+  connectedAt: timestamp("connected_at", { withTimezone: true }).defaultNow().notNull(),
+  // The login link's name, or null after a password login
+  connectedBy: text("connected_by"),
+});
+
+// Mail from the house Gmail. Everything here was written by someone outside the house, so it's shown
+// as plain text only and handed to Grovelet as quoted data, never as instructions.
+export const emails = pgTable("emails", {
+  id: serial("id").primaryKey(),
+  gmailId: text("gmail_id").notNull().unique(),
+  threadId: text("thread_id").notNull(),
+  fromName: text("from_name").notNull(),
+  fromAddress: text("from_address").notNull(),
+  // Everyone it was sent to, as "Name <address>, …"
+  to: text("to").notNull(),
+  subject: text("subject").notNull(),
+  sentAt: timestamp("sent_at", { withTimezone: true }).notNull(),
+  // Plain text: the text part, or the HTML part with its tags taken out
+  body: text("body").notNull(),
+  attachments: jsonb("attachments").$type<{ filename: string; mimeType: string; size: number }[]>().notNull(),
+  // Gmail's labels, e.g. INBOX, UNREAD, SENT
+  labels: text("labels").array().notNull(),
+  // Deleted in Gmail. The row stays, out of every list.
+  deleted: boolean("deleted").default(false).notNull(),
+  // The whole message as Gmail gave it (RFC 822), so the fields above can be worked out again later.
+  // Null when it's over RAW_LIMIT, which only big attachments reach.
+  raw: bytea("raw"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export type Application =typeof applications.$inferSelect;
 export type Note = typeof notes.$inferSelect;
 export type Page = typeof pages.$inferSelect;
+export type Email = typeof emails.$inferSelect;
 export type ApplicationStatus = (typeof applicationStatus.enumValues)[number];

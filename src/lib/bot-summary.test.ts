@@ -30,7 +30,7 @@ const share: RegularPayment = {
 };
 
 describe("botSummary", () => {
-  const base = { today: "2026-10-18", bins: [], pendingApplications: 0, stays: [], shares: null };
+  const base = { today: "2026-10-18", bins: [], pendingApplications: 0, stays: [], shares: null, emails: null };
 
   it("gives guests' first names only and marks which stays are confirmed", () => {
     const summary = botSummary({
@@ -65,5 +65,35 @@ describe("botSummary", () => {
     const summary = botSummary({ ...base, bins });
     expect(summary.shares).toBeNull();
     expect(summary.bins).toEqual(bins.slice(0, 2));
+  });
+
+  it("passes on recent house mail as text, with only attachment names", () => {
+    const email = {
+      fromName: "Thames Water",
+      fromAddress: "bills@thameswater.co.uk",
+      to: "house@example.com",
+      subject: "Your bill",
+      sentAt: new Date("2026-10-19T08:00:00Z"),
+      body: "x".repeat(2500),
+      attachments: [{ filename: "bill.pdf", mimeType: "application/pdf", size: 1234 }],
+      labels: ["INBOX"],
+    };
+    const summary = botSummary({ ...base, emails: [email, { ...email, fromName: "house@example.com", fromAddress: "house@example.com", labels: ["SENT"] }] });
+    expect(summary.emails).toEqual([
+      {
+        from: "Thames Water <bills@thameswater.co.uk>",
+        to: "house@example.com",
+        subject: "Your bill",
+        date: "2026-10-19T08:00:00.000Z",
+        sent: false,
+        text: `${"x".repeat(2000)}…`,
+        attachments: ["bill.pdf"],
+      },
+      expect.objectContaining({ from: "house@example.com", sent: true }),
+    ]);
+  });
+
+  it("says null for mail when the house Gmail isn't connected", () => {
+    expect(botSummary(base).emails).toBeNull();
   });
 });

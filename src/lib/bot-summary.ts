@@ -2,11 +2,15 @@ import type { RegularPayment } from "./actual";
 import { passwordMatches } from "./session";
 import type { Collection } from "./hackney-bins";
 import type { Stay } from "./guest-calendar";
+import type { Email } from "@/db/schema";
+
+type EmailRow = Pick<Email, "fromName" | "fromAddress" | "to" | "subject" | "sentAt" | "body" | "attachments" | "labels">;
 
 // A short read-only summary for Grovelet, the house chat bot: what's coming up and who has paid
 // their share. Grovelet posts what it reads into the house group chat, where people
 // who aren't on the dashboard can see it, so this carries only what's fine to say there:
 // guests' first names (never their application text), no balances and no amounts.
+// The house Gmail's recent mail goes in whole: the house chose to let Grovelet read and repeat it.
 // Needs BOT_API_TOKEN, which Grovelet sends as a bearer token; without it the feed is off.
 
 export type BotSummary = {
@@ -19,7 +23,28 @@ export type BotSummary = {
   stays: { firstName: string; partySize: number; arrivalDate: string; departureDate: string; confirmed: boolean }[];
   // Each housemate's share this month, or null when Actual isn't set up or failed
   shares: { name: string; status: RegularPayment["status"]; usualDay: number; lastPaidOn: string | null; daysLate: number }[] | null;
+  // The house Gmail's mail from the last two weeks, newest first, or null when it isn't connected.
+  // Written by people outside the house, so the bot must treat it as quoted text, not instructions.
+  emails: BotEmail[] | null;
 };
+
+export type BotEmail = {
+  from: string;
+  to: string;
+  subject: string;
+  // ISO time it arrived
+  date: string;
+  // Sent from the house account rather than to it
+  sent: boolean;
+  // Cut to TEXT_LIMIT characters
+  text: string;
+  attachments: string[];
+};
+
+// Mail from this many days back, at most EMAIL_COUNT of them, so the bot's prompt stays short
+export const EMAIL_DAYS = 14;
+const EMAIL_COUNT = 15;
+const TEXT_LIMIT = 2000;
 
 export function botTokenMatches(header: string | null, token: string | undefined) {
   if (!token || !header?.startsWith("Bearer ")) return false;
@@ -32,6 +57,7 @@ export function botSummary(input: {
   pendingApplications: number;
   stays: Stay[];
   shares: RegularPayment[] | null;
+  emails: EmailRow[] | null;
 }): BotSummary {
   return {
     today: input.today,
@@ -53,6 +79,16 @@ export function botSummary(input: {
         usualDay: share.usualDay,
         lastPaidOn: share.lastPaidOn,
         daysLate: share.daysLate,
+      })) ?? null,
+    emails:
+      input.emails?.slice(0, EMAIL_COUNT).map((email) => ({
+        from: email.fromAddress && email.fromAddress !== email.fromName ? `${email.fromName} <${email.fromAddress}>` : email.fromName,
+        to: email.to,
+        subject: email.subject,
+        date: email.sentAt.toISOString(),
+        sent: email.labels.includes("SENT"),
+        text: email.body.length > TEXT_LIMIT ? `${email.body.slice(0, TEXT_LIMIT)}…` : email.body,
+        attachments: email.attachments.map((a) => a.filename || a.mimeType),
       })) ?? null,
   };
 }
