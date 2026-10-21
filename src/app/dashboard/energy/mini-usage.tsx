@@ -12,7 +12,7 @@ export function MiniUsage({ title, days }: { title: string; days: DailyUsage[] }
 
   return (
     <div className="flex items-end gap-3">
-      <div className="flex h-8 w-20 shrink-0 items-end gap-[2px] border-b border-line" aria-hidden>
+      <div className="flex h-8 w-16 shrink-0 items-end gap-[2px] border-b border-line" aria-hidden>
         {days.map((day) => (
           <div
             key={day.date}
@@ -21,7 +21,7 @@ export function MiniUsage({ title, days }: { title: string; days: DailyUsage[] }
           />
         ))}
       </div>
-      <p className="leading-tight">
+      <p className="leading-tight whitespace-nowrap">
         <span className="text-lg font-medium tabular-nums">{total}</span> <span className="text-muted">{title}</span>
       </p>
     </div>

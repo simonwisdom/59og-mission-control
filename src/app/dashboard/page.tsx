@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Suspense } from "react";
+import { type ReactNode, Suspense } from "react";
+import { CalendarClock, CalendarDays, type LucideIcon, Mail, NotebookPen, Wallet, Zap } from "lucide-react";
 import { and, asc, count, eq, gt, gte, isNull, lte, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { applications, memories, trips } from "@/db/schema";
@@ -52,6 +53,28 @@ function binTask(next: Collection, after: Collection | undefined, today: string)
 // The meter reports a day or so late, so the newest day can be partly read; show only full days
 const fullWeek = (days: DailyUsage[] | null) => (days ?? []).filter((day) => day.readings >= 46).slice(-7);
 
+// Every card on the dashboard opens with the same icon-and-title line
+function TileHeading({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }) {
+  return (
+    <h2 className="flex items-center gap-2.5">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-tile/10 text-tile">
+        <Icon className="size-4" strokeWidth={1.75} aria-hidden />
+      </span>
+      <span className="hand text-lg">{children}</span>
+    </h2>
+  );
+}
+
+// A service's card: its heading, then a line or two of what's new there
+function ServiceTile({ href, icon, title, children }: { href: string; icon: LucideIcon; title: string; children: ReactNode }) {
+  return (
+    <Link href={href} className="card flex min-w-0 flex-col gap-3 border-2 border-ink/80 p-4 hover:border-tile">
+      <TileHeading icon={icon}>{title}</TileHeading>
+      <div className="min-w-0">{children}</div>
+    </Link>
+  );
+}
+
 // Hackney, Octopus and Actual can take a few seconds when their cache is cold, so these stream in
 // after the rest of the page
 
@@ -77,21 +100,18 @@ async function BinDay({ today }: { today: string }) {
 async function MoneySummary() {
   const money = await getHouseFinances();
   if (money.status !== "ok") {
-    return <p className="mt-1 text-sm text-muted">Balance and spending from the house budget in Actual</p>;
+    return <p className="text-sm text-muted">Balance and spending from the house budget in Actual</p>;
   }
   const balance = money.accounts.reduce((sum, account) => sum + account.balance, 0);
   return (
-    <div className="mt-1">
+    <>
       <p>
         <span className="text-lg font-medium tabular-nums">{formatPence(balance)}</span>{" "}
-        <span className="text-muted">in the house account{money.accounts.length > 1 && "s"}</span>
+        <span className="text-sm text-muted">in the house</span>
       </p>
-      {(money.shares.length > 0 || money.bills.length > 0) && (
-        <p className="text-sm text-muted">
-          {checked(money.shares, "shares paid")} · {checked(money.bills, "bills gone out")}
-        </p>
-      )}
-    </div>
+      {money.shares.length > 0 && <p className="text-sm text-muted">{checked(money.shares, "shares paid")}</p>}
+      {money.bills.length > 0 && <p className="text-sm text-muted">{checked(money.bills, "bills gone out")}</p>}
+    </>
   );
 }
 
@@ -111,18 +131,14 @@ const checked = (payments: RegularPayment[], what: string) =>
 // What's stored; the Email page itself checks Gmail for new mail
 async function MailSummary() {
   const mailbox = await getMailbox();
-  if (!mailbox) return <p className="mt-1 text-sm text-muted">Connect the house Gmail to read it here</p>;
+  if (!mailbox) return <p className="text-sm text-muted">Connect the house Gmail to read it here</p>;
   const [latest] = await recentEmails(1);
+  if (!latest) return <p className="truncate text-sm text-muted">{mailbox.address}</p>;
   return (
-    <p className="mt-1 truncate text-sm text-muted">
-      {latest ? (
-        <>
-          Latest: <span className="text-foreground">{latest.fromName}</span>, {latest.subject}
-        </>
-      ) : (
-        mailbox.address
-      )}
-    </p>
+    <>
+      <p className="truncate font-medium">{latest.fromName}</p>
+      <p className="truncate text-sm text-muted">{latest.subject}</p>
+    </>
   );
 }
 
@@ -132,10 +148,10 @@ async function EnergyWeek() {
   const electricity = energy.status === "ok" ? fullWeek(energy.electricity) : [];
   const gas = energy.status === "ok" ? fullWeek(energy.gas) : [];
   if (electricity.length === 0 && gas.length === 0) {
-    return <p className="mt-1 text-sm text-muted">Daily electricity and gas use from the smart meters</p>;
+    return <p className="text-sm text-muted">Daily electricity and gas use from the smart meters</p>;
   }
   return (
-    <div className="mt-2 flex flex-wrap gap-x-8 gap-y-2">
+    <div className="grid gap-2">
       <MiniUsage title="electricity" days={electricity} />
       <MiniUsage title="gas" days={gas} />
     </div>
@@ -188,13 +204,13 @@ export default async function DashboardHome() {
   return (
     <>
       <h1 className="section-title mb-5">House services</h1>
-      {/* Short cards stacked on the left and the tall calendar on the right, so the columns come out
-          close in height and no card is stretched to fill */}
+      {/* Coming up and four same-sized service tiles on the left, the tall calendar on the right, so
+          the columns come out close in height */}
       <div className="grid items-start gap-3 md:grid-cols-2">
         <div className="grid gap-3">
           <section className="card border-2 border-ink/80">
-            <h2 className="hand text-xl">Coming up</h2>
-            <ul className="mt-2 divide-y divide-line">
+            <TileHeading icon={CalendarClock}>Coming up</TileHeading>
+            <ul className="mt-1 divide-y divide-line">
               <li className="py-3">
                 <Suspense fallback={<p className="text-muted">Checking bin day…</p>}>
                   <BinDay today={today} />
@@ -209,37 +225,35 @@ export default async function DashboardHome() {
               )}
             </ul>
           </section>
-          <Link href="/dashboard/energy" className="card block hover:border-tile">
-            <h2 className="hand text-lg">Energy, last 7 days</h2>
-            <Suspense fallback={<p className="mt-1 text-sm text-muted">Reading the meters…</p>}>
-              <EnergyWeek />
-            </Suspense>
-          </Link>
-          {isGmailConfigured() && (
-            <Link href="/dashboard/email" className="card block hover:border-tile">
-              <h2 className="hand text-lg">Email</h2>
-              <Suspense fallback={<p className="mt-1 text-sm text-muted">Opening the post…</p>}>
-                <MailSummary />
+          <div className="grid gap-3 sm:grid-cols-2">
+            {isActualConfigured() && (
+              <ServiceTile href="/dashboard/money" icon={Wallet} title="Money">
+                <Suspense fallback={<p className="text-sm text-muted">Opening the books…</p>}>
+                  <MoneySummary />
+                </Suspense>
+              </ServiceTile>
+            )}
+            <ServiceTile href="/dashboard/energy" icon={Zap} title="Energy">
+              <Suspense fallback={<p className="text-sm text-muted">Reading the meters…</p>}>
+                <EnergyWeek />
               </Suspense>
-            </Link>
-          )}
-          <Link href="/dashboard/memory" className="card block hover:border-tile">
-            <h2 className="hand text-lg">Grovelet&apos;s memory</h2>
-            <p className="mt-1 text-sm text-muted">{memoryCount(remembered)}</p>
-          </Link>
-          {isActualConfigured() && (
-            <Link href="/dashboard/money" className="card block hover:border-tile">
-              <h2 className="hand text-lg">House money</h2>
-              <Suspense fallback={<p className="mt-1 text-sm text-muted">Opening the books…</p>}>
-                <MoneySummary />
-              </Suspense>
-            </Link>
-          )}
+            </ServiceTile>
+            {isGmailConfigured() && (
+              <ServiceTile href="/dashboard/email" icon={Mail} title="Email">
+                <Suspense fallback={<p className="text-sm text-muted">Opening the post…</p>}>
+                  <MailSummary />
+                </Suspense>
+              </ServiceTile>
+            )}
+            <ServiceTile href="/dashboard/memory" icon={NotebookPen} title="Grovelet's memory">
+              <p className="text-sm text-muted">{memoryCount(remembered)}</p>
+            </ServiceTile>
+          </div>
         </div>
 
-        <section className="card">
-          <div className="mb-3 flex items-baseline justify-between gap-2">
-            <h2 className="hand text-lg">Calendar</h2>
+        <section className="card border-2 border-ink/80">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <TileHeading icon={CalendarDays}>Calendar</TileHeading>
             <Link href="/dashboard/calendar" className="text-sm text-muted hover:text-pillar">
               Full calendar →
             </Link>

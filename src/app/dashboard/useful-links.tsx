@@ -21,7 +21,7 @@ const BINS = `${HACKNEY}/rubbish-and-recycling/rubbish-recycling-and-food-waste-
 type Mark = { logo: string } | { initial: string; color: string } | { icon: LucideIcon };
 type UsefulLink = { name: string; note: string; href: string | null; mark: Mark };
 
-// Council tasks share one logo, so it sits by the heading and the tiles keep task icons
+// Council tasks share one logo, so it sits by the heading and each link keeps its task icon
 const groups: { title: string; logo?: string; links: UsefulLink[] }[] = [
   {
     title: "Accounts",
@@ -104,12 +104,12 @@ const groups: { title: string; logo?: string; links: UsefulLink[] }[] = [
 
 function LinkMark({ mark }: { mark: Mark }) {
   if ("logo" in mark) {
-    return <Image src={mark.logo} alt="" width={40} height={40} className="size-10 shrink-0 rounded-full" />;
+    return <Image src={mark.logo} alt="" width={32} height={32} className="size-8 shrink-0 rounded-full" />;
   }
   if ("initial" in mark) {
     return (
       <span
-        className="flex size-10 shrink-0 items-center justify-center rounded-full font-semibold text-white"
+        className="flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
         style={{ backgroundColor: mark.color }}
       >
         {mark.initial}
@@ -118,54 +118,59 @@ function LinkMark({ mark }: { mark: Mark }) {
   }
   const Icon = mark.icon;
   return (
-    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-tile/10 text-tile">
-      <Icon className="size-5" strokeWidth={1.75} aria-hidden />
+    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-tile/10 text-tile">
+      <Icon className="size-4" strokeWidth={1.75} aria-hidden />
     </span>
   );
 }
 
+// One card per group, side by side, each a list of its links
 export function UsefulLinks() {
   return (
-    <>
-      {groups.map((group) => (
-        <section key={group.title} className="mt-10">
-          <h2 className="section-title mb-4 flex items-center gap-2">
-            {group.logo && <Image src={group.logo} alt="" width={24} height={24} className="size-6 rounded-full" />}
-            {group.title}
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {group.links.map((link) => {
-              const body = (
-                <>
-                  <LinkMark mark={link.mark} />
-                  <span className="min-w-0">
-                    <span className="block font-medium">
-                      {link.name}
-                      {link.href && <span className="text-ink-soft"> ↗</span>}
+    <section className="mt-10">
+      <h2 className="section-title mb-4">Useful links</h2>
+      <div className="grid items-start gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {groups.map((group) => (
+          <div key={group.title} className="card border-2 border-ink/80 p-4">
+            <h3 className="flex items-center gap-2.5">
+              {group.logo && <Image src={group.logo} alt="" width={24} height={24} className="size-6 rounded-full" />}
+              <span className="hand text-lg">{group.title}</span>
+            </h3>
+            <ul className="mt-2 divide-y divide-line">
+              {group.links.map((link) => {
+                const body = (
+                  <>
+                    <LinkMark mark={link.mark} />
+                    <span className="min-w-0">
+                      <span className="block font-medium">
+                        {link.name}
+                        {link.href && <span className="text-ink-soft"> ↗</span>}
+                      </span>
+                      <span className="block text-sm text-muted">{link.href ? link.note : `${link.note}: link to come`}</span>
                     </span>
-                    <span className="block text-sm text-muted">{link.href ? link.note : `${link.note}: link to come`}</span>
-                  </span>
-                </>
-              );
-              return link.href ? (
-                <a
-                  key={link.name}
-                  href={link.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="card flex items-center gap-3 border-2 border-ink/80 p-3 hover:border-tile"
-                >
-                  {body}
-                </a>
-              ) : (
-                <div key={link.name} className="card flex items-center gap-3 border-2 border-ink/80 p-3 opacity-50">
-                  {body}
-                </div>
-              );
-            })}
+                  </>
+                );
+                return (
+                  <li key={link.name}>
+                    {link.href ? (
+                      <a
+                        href={link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 py-2.5 hover:text-pillar"
+                      >
+                        {body}
+                      </a>
+                    ) : (
+                      <div className="flex items-center gap-3 py-2.5 opacity-50">{body}</div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
           </div>
-        </section>
-      ))}
-    </>
+        ))}
+      </div>
+    </section>
   );
 }

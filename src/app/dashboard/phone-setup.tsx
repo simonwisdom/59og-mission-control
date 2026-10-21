@@ -10,7 +10,7 @@ const NTFY_ANDROID = "https://play.google.com/store/apps/details?id=io.heckel.nt
 export function PhoneSetup() {
   const topic = process.env.NTFY_TOPIC;
   return (
-    <details className="group card mt-8 py-3 text-sm">
+    <details className="group card mt-10 border-2 border-ink/80 py-3 text-sm">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
         <span>
           <span className="hand text-base">Set up your phone</span>
