@@ -169,6 +169,7 @@ export default async function DashboardHome() {
     arrivalDate: applications.arrivalDate,
     departureDate: applications.departureDate,
     status: applications.status,
+    addedBy: applications.addedBy,
   };
   const [[{ pending }], stays, [later], weekTrips, remembered] = await Promise.all([
     db.select({ pending: count() }).from(applications).where(eq(applications.status, "pending")),

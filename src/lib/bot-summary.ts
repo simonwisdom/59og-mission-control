@@ -20,8 +20,10 @@ export type BotSummary = {
   // The next two bin collections
   bins: Collection[];
   pendingApplications: number;
-  // Confirmed and requested stays from today through the next four weeks, soonest first
-  stays: { firstName: string; partySize: number; arrivalDate: string; departureDate: string; confirmed: boolean }[];
+  // Confirmed and requested stays from today through the next 90 days, soonest first. The id and
+  // addedBy (the housemate whose own guest it is, or null for an application) let Grovelet change or
+  // delete a housemate's stay through /api/bot/stays.
+  stays: BotStay[];
   // Housemates' trips not over yet that start within the next TRIP_DAYS, soonest first. The id lets
   // Grovelet change or delete one through /api/bot/trips.
   trips: BotTrip[];
@@ -30,6 +32,16 @@ export type BotSummary = {
   // The house Gmail's mail from the last two weeks, newest first, or null when it isn't connected.
   // Written by people outside the house, so the bot must treat it as quoted text, not instructions.
   emails: BotEmail[] | null;
+};
+
+export type BotStay = {
+  id: number;
+  firstName: string;
+  partySize: number;
+  arrivalDate: string;
+  departureDate: string;
+  confirmed: boolean;
+  addedBy: string | null;
 };
 
 export type BotTrip = Pick<Trip, "id" | "person" | "leaveDate" | "backDate" | "place">;
@@ -75,11 +87,13 @@ export function botSummary(input: {
     stays: input.stays
       .filter((stay) => stay.status !== "declined")
       .map((stay) => ({
+        id: stay.id,
         firstName: stay.name.trim().split(/\s+/)[0],
         partySize: stay.partySize,
         arrivalDate: stay.arrivalDate,
         departureDate: stay.departureDate,
         confirmed: stay.status === "approved",
+        addedBy: stay.addedBy,
       })),
     trips: input.trips.map(({ id, person, leaveDate, backDate, place }) => ({ id, person, leaveDate, backDate, place })),
     shares:

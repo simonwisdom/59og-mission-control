@@ -10,8 +10,9 @@ import { getMailbox, recentEmails, syncHouseMailWithin } from "@/lib/house-mail"
 // bot can't log in; BOT_API_TOKEN is the check instead, and the feed is off until it's set.
 
 const londonToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date());
-// Stays from today through the next four weeks
-const STAY_DAYS = 28;
+// Stays from today through the next 90 days, so a housemate can change a guest's stay at Christmas
+// from October; Grovelet's own lists still say only the next four weeks
+const STAY_DAYS = 90;
 
 export async function GET(request: Request) {
   if (!botTokenMatches(request.headers.get("authorization"), process.env.BOT_API_TOKEN)) {
@@ -31,6 +32,7 @@ export async function GET(request: Request) {
         arrivalDate: applications.arrivalDate,
         departureDate: applications.departureDate,
         status: applications.status,
+        addedBy: applications.addedBy,
       })
       .from(applications)
       .where(

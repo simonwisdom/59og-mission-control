@@ -11,7 +11,12 @@ export { isMonth, monthWeeks, nextDay, shiftMonth, weeksFrom } from "./dates";
 // from Apple or Google Calendar. Calendar apps can't log in, so the feed URL carries a secret
 // derived from SESSION_SECRET; changing SESSION_SECRET changes the link and cuts off old ones.
 
-export type Stay = Pick<Application, "id" | "name" | "partySize" | "arrivalDate" | "departureDate" | "status">;
+export type Stay = Pick<Application, "id" | "name" | "partySize" | "arrivalDate" | "departureDate" | "status" | "addedBy">;
+
+// An application opens its application page; a stay a housemate added opens its own form
+export function stayPath(stay: Pick<Stay, "id" | "addedBy">) {
+  return stay.addedBy ? `/dashboard/calendar/stays/${stay.id}` : `/dashboard/applications/${stay.id}`;
+}
 
 export function calendarFeedToken(secret: string) {
   return createHmac("sha256", secret).update("guest-calendar-feed").digest("base64url").slice(0, 32);
@@ -65,7 +70,7 @@ export function guestFeed(
     `SUMMARY:${escapeText(stayTitle(stay))}`,
     `STATUS:${stay.status === "approved" ? "CONFIRMED" : "TENTATIVE"}`,
     "TRANSP:TRANSPARENT",
-    ...(base ? [`URL:${base}/dashboard/applications/${stay.id}`] : []),
+    ...(base ? [`URL:${base}${stayPath(stay)}`] : []),
     "END:VEVENT",
   ]);
   const tripEvents = trips.flatMap((trip) => [

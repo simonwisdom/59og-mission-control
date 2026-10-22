@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Trip } from "@/db/schema";
-import { stayTitle, type Stay } from "@/lib/guest-calendar";
+import { stayPath, stayTitle, type Stay } from "@/lib/guest-calendar";
 import { tripTitle } from "@/lib/trips";
 
 export type CalendarTrip = Pick<Trip, "id" | "person" | "leaveDate" | "backDate" | "place">;
@@ -68,7 +68,7 @@ export function StayWeeks({
               return (
                 <Link
                   key={stay.id}
-                  href={`/dashboard/applications/${stay.id}`}
+                  href={stayPath(stay)}
                   title={stayTitle(stay)}
                   style={{ gridColumn: `${start + 1} / ${end + 2}`, gridRow: row + 2 }}
                   className={`mx-0.5 truncate rounded-[2px] px-1.5 py-0.5 text-xs font-medium ${

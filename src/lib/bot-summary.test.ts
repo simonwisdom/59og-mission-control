@@ -36,14 +36,16 @@ describe("botSummary", () => {
     const summary = botSummary({
       ...base,
       stays: [
-        { id: 1, name: "Ana María López", partySize: 2, arrivalDate: "2026-10-20", departureDate: "2026-10-22", status: "approved" },
-        { id: 2, name: " Joe ", partySize: 1, arrivalDate: "2026-10-25", departureDate: "2026-10-26", status: "pending" },
-        { id: 3, name: "Declined Guest", partySize: 1, arrivalDate: "2026-10-25", departureDate: "2026-10-26", status: "declined" },
+        { id: 1, name: "Ana María López", partySize: 2, arrivalDate: "2026-10-20", departureDate: "2026-10-22", status: "approved", addedBy: null },
+        { id: 2, name: " Joe ", partySize: 1, arrivalDate: "2026-10-25", departureDate: "2026-10-26", status: "pending", addedBy: null },
+        { id: 3, name: "Declined Guest", partySize: 1, arrivalDate: "2026-10-25", departureDate: "2026-10-26", status: "declined", addedBy: null },
+        { id: 4, name: "Sam Okafor", partySize: 1, arrivalDate: "2026-10-27", departureDate: "2026-10-28", status: "approved", addedBy: "Rita" },
       ],
     });
     expect(summary.stays).toEqual([
-      { firstName: "Ana", partySize: 2, arrivalDate: "2026-10-20", departureDate: "2026-10-22", confirmed: true },
-      { firstName: "Joe", partySize: 1, arrivalDate: "2026-10-25", departureDate: "2026-10-26", confirmed: false },
+      { id: 1, firstName: "Ana", partySize: 2, arrivalDate: "2026-10-20", departureDate: "2026-10-22", confirmed: true, addedBy: null },
+      { id: 2, firstName: "Joe", partySize: 1, arrivalDate: "2026-10-25", departureDate: "2026-10-26", confirmed: false, addedBy: null },
+      { id: 4, firstName: "Sam", partySize: 1, arrivalDate: "2026-10-27", departureDate: "2026-10-28", confirmed: true, addedBy: "Rita" },
     ]);
   });
 

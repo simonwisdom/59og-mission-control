@@ -25,7 +25,7 @@ export function formatForWhatsApp(app: Shareable, url: string) {
     app.connection && `*${FIELD_LABELS.connection}:* ${app.connection}`,
     "",
     `*${FIELD_LABELS.about}*`,
-    quote(app.about),
+    app.about && quote(app.about),
     app.offering && `\n*${FIELD_LABELS.offering}*\n${quote(app.offering)}`,
     app.anythingElse && `\n*${FIELD_LABELS.anythingElse}*\n${quote(app.anythingElse)}`,
     "",

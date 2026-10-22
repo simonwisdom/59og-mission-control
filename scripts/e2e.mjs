@@ -5,8 +5,8 @@
 //
 // Checks every main page loads at phone width without errors or sideways scroll, that booked
 // nights on the apply calendar can't be picked, and that a test application can be sent and
-// shows up on the dashboard, and that a housemate's trip can be added, changed and deleted from the
-// calendar, and that a memory note can be added, edited, forgotten, brought back and deleted for
+// shows up on the dashboard, and that a housemate's trip and a stay for their own guest can each be
+// added, changed and deleted from the calendar, and that a memory note can be added, edited, forgotten, brought back and deleted for
 // good. Its test rows (an approved stay, the application, the trip and the notes) are deleted
 // at the end. It refuses to run unless .env points at a database on this Mac, and blanks
 // NTFY_TOPIC so housemates' phones don't get a notification. With OUT_DIR, saves a screenshot
@@ -32,6 +32,7 @@ if (!["localhost", "127.0.0.1", "::1", "[::1]"].includes(dbHost)) {
 const WIDTH = 390;
 const TEST_EMAIL = "e2e-test@example.invalid";
 const TEST_PERSON = "E2E Traveller";
+const TEST_GUEST = "E2E Guest";
 const PAGES = [
   "/",
   "/apply",
@@ -86,6 +87,7 @@ try {
   }
   await sql`delete from applications where email = ${TEST_EMAIL}`;
   await sql`delete from trips where person = ${TEST_PERSON}`;
+  await sql`delete from applications where added_by = ${TEST_PERSON}`;
   console.log(`Database: ${dbHost}${new URL(process.env.DATABASE_URL).pathname}`);
 
   const context = await browser.newContext({ viewport: { width: WIDTH, height: 900 } });
@@ -197,6 +199,42 @@ try {
     expect(left.length === 0, `${left.length} test trips left after deleting`);
   });
 
+  await check("a housemate's guest can be added, changed and deleted on the calendar", async () => {
+    const stays = () => sql`select party_size, status, email from applications where added_by = ${TEST_PERSON}`;
+    await page.goto(`${base}/dashboard/calendar`, { waitUntil: "networkidle" });
+    const arrive = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
+    const depart = new Date(Date.now() + 5 * 86_400_000).toISOString().slice(0, 10);
+    await page.getByLabel("Guest", { exact: true }).fill(TEST_GUEST);
+    await page.getByLabel("People").fill("2");
+    await page.getByLabel("Arriving").fill(arrive);
+    await page.getByLabel("Departing").fill(depart);
+    await page.getByLabel("Whose guest").fill(TEST_PERSON);
+    await page.getByRole("button", { name: "Add stay" }).click();
+    const listed = page.getByRole("link", { name: new RegExp(`${TEST_GUEST} \\(${TEST_PERSON}'s guest\\)`) });
+    await listed.waitFor({ timeout: 30_000 });
+    const [added] = await stays();
+    expect(added && added.status === "approved" && added.party_size === 2 && added.email === null, `saved as ${JSON.stringify(added)}`);
+
+    await page.goto(`${base}/dashboard/applications`, { waitUntil: "networkidle" });
+    expect((await page.getByText(TEST_GUEST).count()) === 0, "the stay shows on the applications list");
+
+    await page.goto(`${base}/dashboard/calendar`, { waitUntil: "networkidle" });
+    await listed.click();
+    await page.waitForURL(/\/dashboard\/calendar\/stays\/\d+$/);
+    await page.getByLabel("People").fill("1");
+    await page.getByRole("button", { name: "Save changes" }).click();
+    await page.waitForURL(/\/dashboard\/calendar\?month=/);
+    const [changed] = await stays();
+    expect(changed && changed.party_size === 1, `saved as ${JSON.stringify(changed)}`);
+
+    await listed.click();
+    await page.getByRole("button", { name: "Delete stay" }).click();
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+    await page.waitForURL(/\/dashboard\/calendar$/);
+    const left = await stays();
+    expect(left.length === 0, `${left.length} test stays left after deleting`);
+  });
+
   await check("a memory note can be added, edited, forgotten, brought back and deleted", async () => {
     const live = () => sql`select body from memories where body like ${`${TEST_NOTE}%`} and replaced_at is null and removed_at is null`;
     await page.goto(`${base}/dashboard/memory`, { waitUntil: "networkidle" });
@@ -242,6 +280,7 @@ try {
   const deleted = await sql`delete from applications where email = ${TEST_EMAIL} returning id`;
   if (deleted.length) console.log(`     removed ${deleted.length} test applications`);
   await sql`delete from trips where person = ${TEST_PERSON}`;
+  await sql`delete from applications where added_by = ${TEST_PERSON}`;
   await sql`delete from memories where body like ${`${TEST_NOTE}%`}`;
   await sql.end();
   await browser.close();

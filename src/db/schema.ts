@@ -23,13 +23,15 @@ export const applications = pgTable("applications", {
   status: applicationStatus("status").default("pending").notNull(),
 
   name: text("name").notNull(),
-  email: text("email").notNull(),
+  // Null on a stay a housemate added for their own guest (addedBy); the apply form requires it
+  email: text("email"),
 
   arrivalDate: date("arrival_date").notNull(),
   departureDate: date("departure_date").notNull(),
   partySize: integer("party_size").notNull(),
 
-  about: text("about").notNull(),
+  // Null on a stay a housemate added, like email
+  about: text("about"),
   connection: text("connection"),
   // What they'd like to contribute while staying, e.g. cooking a dinner. Nullable
   // because applications from before this question was asked don't have it.
@@ -37,6 +39,10 @@ export const applications = pgTable("applications", {
   // Dietary needs, allergies, pets, accessibility, etc.
   anythingElse: text("anything_else"),
   agreedToRules: boolean("agreed_to_rules").notNull(),
+  // The housemate who put this stay on the calendar for their own guest, from the dashboard or
+  // through Grovelet; null for an application from the apply form. These stays are approved from
+  // the start and stay off the applications list.
+  addedBy: text("added_by"),
 });
 
 export const notes = pgTable("notes", {

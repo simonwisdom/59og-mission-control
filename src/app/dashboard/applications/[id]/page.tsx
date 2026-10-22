@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
@@ -41,6 +41,8 @@ export default async function ApplicationPage({ params }: { params: Promise<{ id
 
   const [app] = await db.select().from(applications).where(eq(applications.id, id));
   if (!app) notFound();
+  // A housemate's own guest has no application to show, only the stay's form
+  if (app.addedBy) redirect(`/dashboard/calendar/stays/${app.id}`);
 
   const appNotes = await db
     .select()

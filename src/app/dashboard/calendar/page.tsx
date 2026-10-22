@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies, headers } from "next/headers";
-import { and, asc, gte, lte, ne } from "drizzle-orm";
+import { and, asc, gte, isNotNull, lte, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { applications, trips } from "@/db/schema";
 import { getSessionSecret, sessionName } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { calendarFeedToken, isMonth, monthWeeks, shiftMonth } from "@/lib/guest-calendar";
 import { REVIEWER_COOKIE } from "@/lib/review";
-import { knownPeople, tripTitle } from "@/lib/trips";
+import { tripTitle } from "@/lib/trips";
 import { Crumbs } from "../crumbs";
 import { CopyLink } from "./copy-link";
+import { housemates } from "./people";
+import { StayForm } from "./stay-form";
 import { StayLegend, StayWeeks } from "./stay-weeks";
 import { TripForm } from "./trip-form";
 
@@ -43,6 +45,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       arrivalDate: applications.arrivalDate,
       departureDate: applications.departureDate,
       status: applications.status,
+      addedBy: applications.addedBy,
     })
     .from(applications)
     .where(
@@ -54,14 +57,19 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     )
     .orderBy(asc(applications.arrivalDate));
 
-  const [monthTrips, upcomingTrips, people] = await Promise.all([
+  const [monthTrips, upcomingTrips, upcomingStays, people] = await Promise.all([
     db
       .select()
       .from(trips)
       .where(and(lte(trips.leaveDate, lastDay), gte(trips.backDate, firstDay)))
       .orderBy(asc(trips.leaveDate)),
     db.select().from(trips).where(gte(trips.backDate, today)).orderBy(asc(trips.leaveDate)),
-    db.selectDistinct({ person: trips.person }).from(trips),
+    db
+      .select()
+      .from(applications)
+      .where(and(isNotNull(applications.addedBy), gte(applications.departureDate, today)))
+      .orderBy(asc(applications.arrivalDate)),
+    housemates(),
   ]);
   // Fill in who's adding a trip: the name they last signed a note with, or their login link's first
   // word. A link can be named "the house", so the note name comes first.
@@ -107,7 +115,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           Add your trip so the house knows who&apos;s in. Everyone in the house can see it, and Grovelet tells
           anyone who asks.
         </p>
-        <TripForm defaults={{ person: me }} people={knownPeople(people.map((p) => p.person))} />
+        <TripForm defaults={{ person: me }} people={people} />
         {upcomingTrips.length > 0 && (
           <>
             <h3 className="mt-6 text-sm font-medium">Trips coming up</h3>
@@ -118,6 +126,34 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                     <span className="font-medium">{tripTitle(trip)}</span>
                     <span className="text-muted">
                       {formatDate(trip.leaveDate)} to {formatDate(trip.backDate)}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
+
+      <section className="card mt-8">
+        <h2 className="hand text-lg">Having a guest?</h2>
+        <p className="mt-1 mb-3 text-sm text-muted">
+          Add a friend or family member staying with you. It goes on the calendar as confirmed, with no
+          application. Grovelet can add one too, in a chat.
+        </p>
+        <StayForm defaults={{ addedBy: me }} people={people} />
+        {upcomingStays.length > 0 && (
+          <>
+            <h3 className="mt-6 text-sm font-medium">Housemates&apos; guests coming up</h3>
+            <ul className="mt-1 divide-y divide-line text-sm">
+              {upcomingStays.map((stay) => (
+                <li key={stay.id}>
+                  <Link href={`/dashboard/calendar/stays/${stay.id}`} className="flex flex-wrap justify-between gap-x-3 py-2 hover:text-pillar">
+                    <span className="font-medium">
+                      {stay.name} <span className="font-normal text-muted">({stay.addedBy}&apos;s guest)</span>
+                    </span>
+                    <span className="text-muted">
+                      {formatDate(stay.arrivalDate)} to {formatDate(stay.departureDate)}
                     </span>
                   </Link>
                 </li>

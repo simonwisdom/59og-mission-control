@@ -11,11 +11,11 @@ export type BotApplication = {
   sentAt: string;
   status: Application["status"];
   name: string;
-  email: string;
+  email: string | null;
   arrivalDate: string;
   departureDate: string;
   partySize: number;
-  about: string;
+  about: string | null;
   connection: string | null;
   offering: string | null;
   anythingElse: string | null;
@@ -23,12 +23,14 @@ export type BotApplication = {
   notes: { author: string; body: string; date: string }[];
 };
 
-// Applications sent in the last APPLICATION_DAYS, or whose stay isn't over yet
+// Applications sent in the last APPLICATION_DAYS, or whose stay isn't over yet. Stays housemates
+// added for their own guests aren't applications, so they're left out (the summary has them).
 export const APPLICATION_DAYS = 90;
 const APPLICATION_COUNT = 40;
 
 export function botApplications(rows: Application[], notes: Note[]): BotApplication[] {
-  return [...rows]
+  return rows
+    .filter((row) => !row.addedBy)
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .slice(0, APPLICATION_COUNT)
     .map((row) => ({

@@ -23,6 +23,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/calendar/[token
       arrivalDate: applications.arrivalDate,
       departureDate: applications.departureDate,
       status: applications.status,
+      addedBy: applications.addedBy,
     })
     .from(applications)
     .where(and(ne(applications.status, "declined"), gte(applications.departureDate, since)))

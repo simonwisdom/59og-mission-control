@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { applications } from "@/db/schema";
 import { STATUSES, isStatus } from "@/lib/review";
@@ -21,7 +21,8 @@ export default async function ApplicationsPage({
   const rows = await db
     .select()
     .from(applications)
-    .where(status ? eq(applications.status, status) : undefined)
+    // Stays housemates added for their own guests aren't applications; they're on the calendar
+    .where(and(isNull(applications.addedBy), status ? eq(applications.status, status) : undefined))
     .orderBy(desc(applications.createdAt));
 
   const tabs = [{ label: "All", value: undefined }, ...STATUSES.map((s) => ({ label: s, value: s }))];

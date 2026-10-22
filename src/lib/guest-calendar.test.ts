@@ -23,6 +23,7 @@ const stay = (overrides: Partial<Stay> = {}): Stay => ({
   arrivalDate: "2026-10-30",
   departureDate: "2026-11-02",
   status: "approved",
+  addedBy: null,
   ...overrides,
 });
 
@@ -95,6 +96,12 @@ describe("guest feed", () => {
       "URL:https://example.com/dashboard/applications/7\r\n",
     );
     expect(guestFeed([stay()], { now })).not.toContain("URL:");
+  });
+
+  it("links a stay a housemate added to its own page", () => {
+    expect(guestFeed([stay({ addedBy: "Rita" })], { now, appUrl: "https://example.com" })).toContain(
+      "URL:https://example.com/dashboard/calendar/stays/7\r\n",
+    );
   });
 
   it("adds housemates' trips through the day they're back", () => {

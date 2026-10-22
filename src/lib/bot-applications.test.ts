@@ -16,6 +16,7 @@ const application = (id: number, createdAt: string, extra: Partial<Application> 
   offering: "A dinner",
   anythingElse: null,
   agreedToRules: true,
+  addedBy: null,
   ...extra,
 });
 
@@ -45,5 +46,13 @@ describe("botApplications", () => {
     expect(result[1].notes.map((n) => n.body)).toEqual(["first", "second"]);
     expect(result[0].notes.map((n) => n.body)).toEqual(["ok"]);
     expect(result[0]).not.toHaveProperty("agreedToRules");
+  });
+
+  it("leaves out stays housemates added for their own guests", () => {
+    const result = botApplications(
+      [application(1, "2026-10-01T10:00:00Z"), application(2, "2026-10-02T10:00:00Z", { addedBy: "Rita", email: null, about: null })],
+      [],
+    );
+    expect(result.map((a) => a.id)).toEqual([1]);
   });
 });

@@ -55,7 +55,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const [app] = Number.isInteger(id)
     ? await db.select().from(applications).where(eq(applications.id, id))
     : [];
-  if (!app) return new Response("Not found", { status: 404 });
+  if (!app || app.about === null) return new Response("Not found", { status: 404 });
 
 
   return new ImageResponse(
