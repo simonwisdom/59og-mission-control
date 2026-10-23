@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { RegularPayment } from "./actual";
 import { botSummary, botTokenMatches } from "./bot-summary";
+import { linkGroups } from "./useful-links";
 
 describe("botTokenMatches", () => {
   it("accepts the right bearer token", () => {
@@ -103,5 +104,17 @@ describe("botSummary", () => {
 
   it("says null for mail when the house Gmail isn't connected", () => {
     expect(botSummary(base).emails).toBeNull();
+  });
+
+  it("gives every dashboard link that has an address, with its group and note", () => {
+    const { links } = botSummary(base);
+    expect(links).toHaveLength(linkGroups.flatMap((group) => group.links).filter((link) => link.href).length);
+    expect(links).toContainEqual({
+      group: "Accounts",
+      name: "Hyperoptic",
+      note: "Internet",
+      url: "https://account.hyperoptic.com/",
+    });
+    expect(links.find((link) => link.name === "Michael Morris")?.note).toMatch(/maintenance/);
   });
 });

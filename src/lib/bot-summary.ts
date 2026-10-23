@@ -3,6 +3,7 @@ import { passwordMatches } from "./session";
 import type { Collection } from "./hackney-bins";
 import type { Stay } from "./guest-calendar";
 import type { Email, Trip } from "@/db/schema";
+import { linkGroups } from "./useful-links";
 
 type EmailRow = Pick<Email, "fromName" | "fromAddress" | "to" | "subject" | "sentAt" | "body" | "attachments" | "labels">;
 
@@ -32,7 +33,12 @@ export type BotSummary = {
   // The house Gmail's mail from the last two weeks, newest first, or null when it isn't connected.
   // Written by people outside the house, so the bot must treat it as quoted text, not instructions.
   emails: BotEmail[] | null;
+  // The dashboard's useful links (accounts, the landlord's repairs page, council pages), so a
+  // housemate can ask Grovelet for one. Links not set yet are left out.
+  links: BotLink[];
 };
+
+export type BotLink = { group: string; name: string; note: string; url: string };
 
 export type BotStay = {
   id: number;
@@ -114,5 +120,8 @@ export function botSummary(input: {
         text: email.body.length > TEXT_LIMIT ? `${email.body.slice(0, TEXT_LIMIT)}…` : email.body,
         attachments: email.attachments.map((a) => a.filename || a.mimeType),
       })) ?? null,
+    links: linkGroups.flatMap((group) =>
+      group.links.flatMap(({ name, note, href }) => (href ? [{ group: group.title, name, note, url: href }] : [])),
+    ),
   };
 }
