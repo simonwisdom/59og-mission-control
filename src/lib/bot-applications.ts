@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { Application, Note } from "@/db/schema";
 
 // Guest applications for Grovelet, in full: the house chose to let Grovelet read every detail and
@@ -23,11 +24,40 @@ export type BotApplication = {
   notes: { author: string; body: string; date: string }[];
 };
 
+// What Grovelet last told the house about a stay it's approving, so a stay changed while the guest
+// chat voted isn't approved on the old votes. Each is optional; one left out isn't checked.
+const expectedStaySchema = z.object({
+  arrivalDate: z.iso.date("Give arrivalDate as a date like 2026-11-07").optional(),
+  departureDate: z.iso.date("Give departureDate as a date like 2026-11-09").optional(),
+  partySize: z.number("Give partySize as a whole number").int("Give partySize as a whole number").optional(),
+});
+
+export type ExpectedStay = z.infer<typeof expectedStaySchema>;
+
+export function parseExpectedStay(body: Record<string, unknown>): { success: true; data: ExpectedStay } | { success: false; error: string } {
+  const result = expectedStaySchema.safeParse({
+    arrivalDate: body.arrivalDate ?? undefined,
+    departureDate: body.departureDate ?? undefined,
+    partySize: body.partySize ?? undefined,
+  });
+  return result.success ? { success: true, data: result.data } : { success: false, error: result.error.issues[0].message };
+}
+
+export type ApprovalRefusal = { status: 404 | 409; body: { error: string; changed?: true } };
+
 // Why Grovelet can't approve this row, or null when it can: a guest application, or a stay a
-// housemate added as not confirmed yet while the house votes on it, and only while it's pending.
-export function approvalRefusal(row: Pick<Application, "status" | "addedBy"> | undefined): { status: 404 | 409; error: string } | null {
-  if (!row) return { status: 404, error: "No such application" };
-  if (row.status !== "pending") return { status: 409, error: `This ${row.addedBy ? "stay" : "application"} is already ${row.status}` };
+// housemate added as not confirmed yet while the house votes on it, only while it's pending, and
+// only if it still has the dates and party size Grovelet expects.
+export function approvalRefusal(
+  row: Pick<Application, "status" | "addedBy" | "arrivalDate" | "departureDate" | "partySize"> | undefined,
+  expected: ExpectedStay = {},
+): ApprovalRefusal | null {
+  if (!row) return { status: 404, body: { error: "No such application" } };
+  if (row.status !== "pending") return { status: 409, body: { error: `This ${row.addedBy ? "stay" : "application"} is already ${row.status}` } };
+  const changed = (["arrivalDate", "departureDate", "partySize"] as const).some(
+    (field) => expected[field] !== undefined && expected[field] !== row[field],
+  );
+  if (changed) return { status: 409, body: { error: "This stay has changed", changed: true } };
   return null;
 }
 

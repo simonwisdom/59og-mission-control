@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Application, Note } from "@/db/schema";
-import { approvalRefusal, botApplications } from "./bot-applications";
+import { approvalRefusal, botApplications, parseExpectedStay } from "./bot-applications";
 
 const application = (id: number, createdAt: string, extra: Partial<Application> = {}): Application => ({
   id,
@@ -64,14 +64,55 @@ describe("approvalRefusal", () => {
   });
 
   it("answers 404 for no row and 409 for one that isn't pending", () => {
-    expect(approvalRefusal(undefined)).toEqual({ status: 404, error: "No such application" });
+    expect(approvalRefusal(undefined)).toEqual({ status: 404, body: { error: "No such application" } });
     expect(approvalRefusal(application(1, "2026-10-01T10:00:00Z", { status: "declined" }))).toEqual({
       status: 409,
-      error: "This application is already declined",
+      body: { error: "This application is already declined" },
     });
     expect(approvalRefusal(application(2, "2026-10-01T10:00:00Z", { status: "approved", addedBy: "Rita" }))).toEqual({
       status: 409,
-      error: "This stay is already approved",
+      body: { error: "This stay is already approved" },
     });
+  });
+
+  // The row's stay: 2026-11-01 to 2026-11-04, 2 people
+  const stay = application(3, "2026-10-01T10:00:00Z", { addedBy: "Rita", email: null, about: null });
+  const changed = { status: 409, body: { error: "This stay has changed", changed: true } };
+
+  it("approves when what Grovelet expects still matches, all of it or only some", () => {
+    expect(approvalRefusal(stay, { arrivalDate: "2026-11-01", departureDate: "2026-11-04", partySize: 2 })).toBeNull();
+    expect(approvalRefusal(stay, { partySize: 2 })).toBeNull();
+    expect(approvalRefusal(stay, {})).toBeNull();
+  });
+
+  it("answers 409 changed when the dates or party size differ from what Grovelet expects", () => {
+    expect(approvalRefusal(stay, { arrivalDate: "2026-11-02" })).toEqual(changed);
+    expect(approvalRefusal(stay, { departureDate: "2026-11-05" })).toEqual(changed);
+    expect(approvalRefusal(stay, { arrivalDate: "2026-11-01", partySize: 3 })).toEqual(changed);
+  });
+
+  it("says already approved rather than changed for a stay no longer pending", () => {
+    expect(approvalRefusal({ ...stay, status: "approved" }, { partySize: 3 })).toEqual({
+      status: 409,
+      body: { error: "This stay is already approved" },
+    });
+  });
+});
+
+describe("parseExpectedStay", () => {
+  it("reads the optional dates and party size, leaving out what's missing or null", () => {
+    expect(parseExpectedStay({ person: "Rita", arrivalDate: "2026-11-01", departureDate: "2026-11-04", partySize: 2 })).toEqual({
+      success: true,
+      data: { arrivalDate: "2026-11-01", departureDate: "2026-11-04", partySize: 2 },
+    });
+    expect(parseExpectedStay({ person: "Rita" })).toEqual({ success: true, data: {} });
+    expect(parseExpectedStay({ partySize: null })).toEqual({ success: true, data: {} });
+  });
+
+  it("turns away a date that isn't one, or a party size that isn't a whole number", () => {
+    expect(parseExpectedStay({ arrivalDate: "1 Nov" })).toEqual({ success: false, error: "Give arrivalDate as a date like 2026-11-07" });
+    expect(parseExpectedStay({ departureDate: 20261104 })).toEqual({ success: false, error: "Give departureDate as a date like 2026-11-09" });
+    expect(parseExpectedStay({ partySize: "2" })).toEqual({ success: false, error: "Give partySize as a whole number" });
+    expect(parseExpectedStay({ partySize: 1.5 })).toEqual({ success: false, error: "Give partySize as a whole number" });
   });
 });
