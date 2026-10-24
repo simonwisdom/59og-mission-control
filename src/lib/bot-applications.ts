@@ -23,6 +23,14 @@ export type BotApplication = {
   notes: { author: string; body: string; date: string }[];
 };
 
+// Why Grovelet can't approve this row, or null when it can: a guest application, or a stay a
+// housemate added as not confirmed yet while the house votes on it, and only while it's pending.
+export function approvalRefusal(row: Pick<Application, "status" | "addedBy"> | undefined): { status: 404 | 409; error: string } | null {
+  if (!row) return { status: 404, error: "No such application" };
+  if (row.status !== "pending") return { status: 409, error: `This ${row.addedBy ? "stay" : "application"} is already ${row.status}` };
+  return null;
+}
+
 // Applications sent in the last APPLICATION_DAYS, or whose stay isn't over yet. Stays housemates
 // added for their own guests aren't applications, so they're left out (the summary has them).
 export const APPLICATION_DAYS = 90;

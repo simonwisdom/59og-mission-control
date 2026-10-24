@@ -6,7 +6,20 @@ describe("parseStay", () => {
     expect(parseStay({ addedBy: " Rita ", name: " Sam Okafor ", partySize: "2", arrivalDate: "2026-11-07", departureDate: "2026-11-09" })).toEqual({
       success: true,
       data: { addedBy: "Rita", name: "Sam Okafor", partySize: 2, arrivalDate: "2026-11-07", departureDate: "2026-11-09" },
+      confirmed: true,
     });
+  });
+
+  it("reads confirmed apart from the stay, true unless it's false, and only as true or false", () => {
+    const stay = { addedBy: "Rita", name: "Sam", partySize: 1, arrivalDate: "2026-11-07", departureDate: "2026-11-09" };
+    const data = { addedBy: "Rita", name: "Sam", partySize: 1, arrivalDate: "2026-11-07", departureDate: "2026-11-09" };
+    expect(parseStay({ ...stay, confirmed: false })).toEqual({ success: true, data, confirmed: false });
+    expect(parseStay({ ...stay, confirmed: true })).toEqual({ success: true, data, confirmed: true });
+    expect(parseStay(stay)).toEqual({ success: true, data, confirmed: true });
+    expect(parseStay({ ...stay, confirmed: null })).toEqual({ success: true, data, confirmed: true });
+    for (const confirmed of ["false", 0, "no", {}]) {
+      expect(parseStay({ ...stay, confirmed })).toEqual({ success: false, errors: { confirmed: "Say true or false for confirmed" } });
+    }
   });
 
   it("says what's wrong with each field", () => {
@@ -48,5 +61,11 @@ describe("stayRow", () => {
       email: null,
       about: null,
     });
+  });
+
+  it("saves one not confirmed yet as pending, otherwise the same", () => {
+    const stay = { addedBy: "Rita", name: "Sam", partySize: 1, arrivalDate: "2026-11-07", departureDate: "2026-11-09" };
+    expect(stayRow(stay, false)).toEqual({ ...stayRow(stay), status: "pending" });
+    expect(stayRow(stay, true).status).toBe("approved");
   });
 });

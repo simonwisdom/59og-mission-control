@@ -3,7 +3,9 @@ import type { Application } from "@/db/schema";
 
 // Stays housemates put on the calendar for their own guests, without an application. The dashboard
 // and Grovelet both send them through parseStay, so the same rules hold however one comes in.
-// They're kept with applications (addedBy set), approved from the start.
+// They're kept with applications (addedBy set), approved from the start, unless Grovelet sends
+// confirmed: false for a stay the house is still voting on in the guest chat. That one is pending
+// until Grovelet approves it through /api/bot/applications/<id>/approve.
 
 export type StayInput = Pick<Application, "name" | "partySize" | "arrivalDate" | "departureDate"> & { addedBy: string };
 
@@ -21,6 +23,7 @@ const staySchema = z
       .max(20, "That's a lot of people"),
     arrivalDate: z.iso.date("Choose the day they arrive"),
     departureDate: z.iso.date("Choose the day they leave"),
+    confirmed: z.boolean("Say true or false for confirmed").default(true),
   })
   .refine((stay) => stay.departureDate >= stay.arrivalDate, {
     path: ["departureDate"],
@@ -31,25 +34,34 @@ const staySchema = z
     message: "That's over a year away; check the year",
   });
 
-export type StayErrors = Partial<Record<keyof StayInput, string>>;
+export type StayErrors = Partial<Record<keyof StayInput | "confirmed", string>>;
 
-export function parseStay(input: Record<string, unknown>): { success: true; data: StayInput } | { success: false; errors: StayErrors } {
+// confirmed is kept out of data, because data is also what a change saves, and a change never
+// touches whether a stay is confirmed
+export function parseStay(
+  input: Record<string, unknown>,
+): { success: true; data: StayInput; confirmed: boolean } | { success: false; errors: StayErrors } {
   const result = staySchema.safeParse({
     addedBy: input.addedBy ?? undefined,
     name: input.name ?? undefined,
     partySize: input.partySize ?? undefined,
     arrivalDate: input.arrivalDate ?? undefined,
     departureDate: input.departureDate ?? undefined,
+    confirmed: input.confirmed ?? undefined,
   });
-  if (result.success) return { success: true, data: result.data };
+  if (result.success) {
+    const { confirmed, ...data } = result.data;
+    return { success: true, data, confirmed };
+  }
   const errors: StayErrors = {};
-  for (const issue of result.error.issues) errors[issue.path[0] as keyof StayInput] ??= issue.message;
+  for (const issue of result.error.issues) errors[issue.path[0] as keyof StayErrors] ??= issue.message;
   return { success: false, errors };
 }
 
-// The row to save: a housemate's stay is confirmed from the start, and has no application text
-export function stayRow(stay: StayInput) {
-  return { ...stay, status: "approved" as const, agreedToRules: false, email: null, about: null };
+// The row to save: a housemate's stay is confirmed from the start unless said otherwise, and has no
+// application text
+export function stayRow(stay: StayInput, confirmed = true) {
+  return { ...stay, status: confirmed ? ("approved" as const) : ("pending" as const), agreedToRules: false, email: null, about: null };
 }
 
 function daysBetween(from: string, to: string) {

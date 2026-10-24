@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Application, Note } from "@/db/schema";
-import { botApplications } from "./bot-applications";
+import { approvalRefusal, botApplications } from "./bot-applications";
 
 const application = (id: number, createdAt: string, extra: Partial<Application> = {}): Application => ({
   id,
@@ -54,5 +54,24 @@ describe("botApplications", () => {
       [],
     );
     expect(result.map((a) => a.id)).toEqual([1]);
+  });
+});
+
+describe("approvalRefusal", () => {
+  it("lets Grovelet approve a pending application, or a housemate's stay not confirmed yet", () => {
+    expect(approvalRefusal(application(1, "2026-10-01T10:00:00Z"))).toBeNull();
+    expect(approvalRefusal(application(2, "2026-10-01T10:00:00Z", { addedBy: "Rita", email: null, about: null }))).toBeNull();
+  });
+
+  it("answers 404 for no row and 409 for one that isn't pending", () => {
+    expect(approvalRefusal(undefined)).toEqual({ status: 404, error: "No such application" });
+    expect(approvalRefusal(application(1, "2026-10-01T10:00:00Z", { status: "declined" }))).toEqual({
+      status: 409,
+      error: "This application is already declined",
+    });
+    expect(approvalRefusal(application(2, "2026-10-01T10:00:00Z", { status: "approved", addedBy: "Rita" }))).toEqual({
+      status: 409,
+      error: "This stay is already approved",
+    });
   });
 });

@@ -1,4 +1,4 @@
-import { and, asc, count, eq, gte, lte, ne } from "drizzle-orm";
+import { and, asc, count, eq, gte, isNull, lte, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { applications, trips } from "@/db/schema";
 import { getHouseFinances } from "@/lib/actual";
@@ -23,7 +23,8 @@ export async function GET(request: Request) {
   const daysAhead = (days: number) => new Date(Date.parse(`${today}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
   const until = daysAhead(STAY_DAYS);
   const [[{ pending }], stays, housemateTrips, bins, money, mail] = await Promise.all([
-    db.select({ pending: count() }).from(applications).where(eq(applications.status, "pending")),
+    // A housemate's stay waiting on the guest chat's vote is pending too, but it isn't an application
+    db.select({ pending: count() }).from(applications).where(and(eq(applications.status, "pending"), isNull(applications.addedBy))),
     db
       .select({
         id: applications.id,

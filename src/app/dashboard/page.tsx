@@ -172,7 +172,8 @@ export default async function DashboardHome() {
     addedBy: applications.addedBy,
   };
   const [[{ pending }], stays, [later], weekTrips, remembered] = await Promise.all([
-    db.select({ pending: count() }).from(applications).where(eq(applications.status, "pending")),
+    // A housemate's stay waiting on the guest chat's vote is pending too, but it isn't an application
+    db.select({ pending: count() }).from(applications).where(and(eq(applications.status, "pending"), isNull(applications.addedBy))),
     db
       .select(stayFields)
       .from(applications)

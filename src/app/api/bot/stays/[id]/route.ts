@@ -25,12 +25,13 @@ async function ownStay(request: Request, ctx: RouteContext<"/api/bot/stays/[id]"
 }
 
 // Body: {"person"} and any of "name", "partySize", "arrivalDate", "departureDate"; what's left out
-// stays as it was (Grovelet only sees a guest's first name), and so does who added it.
+// stays as it was (Grovelet only sees a guest's first name), and so does who added it and whether
+// it's confirmed (that only changes through approve).
 export async function PUT(request: Request, ctx: RouteContext<"/api/bot/stays/[id]">) {
   const found = await ownStay(request, ctx);
   if (found.error) return found.error;
   const { name, partySize, arrivalDate, departureDate } = found.stay;
-  const parsed = parseStay({ name, partySize, arrivalDate, departureDate, ...found.body, addedBy: found.stay.addedBy });
+  const parsed = parseStay({ name, partySize, arrivalDate, departureDate, ...found.body, addedBy: found.stay.addedBy, confirmed: undefined });
   if (!parsed.success) return Response.json({ errors: parsed.errors }, { status: 400 });
 
   const [stay] = await db.update(applications).set(parsed.data).where(eq(applications.id, found.stay.id)).returning();
