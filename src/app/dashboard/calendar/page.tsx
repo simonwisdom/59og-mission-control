@@ -1,27 +1,29 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies, headers } from "next/headers";
-import { and, asc, gte, isNotNull, lte, ne, sql } from "drizzle-orm";
+import { and, asc, gte, lte, ne, sql } from "drizzle-orm";
+import { CalendarPlus } from "lucide-react";
 import { db } from "@/db";
 import { applications, events, trips } from "@/db/schema";
 import { getSessionSecret, sessionName } from "@/lib/auth";
-import { eventLabel } from "@/lib/events";
-import { formatDate } from "@/lib/format";
-import { calendarFeedToken, isMonth, monthWeeks, shiftMonth } from "@/lib/guest-calendar";
+import { eventEnd } from "@/lib/events";
+import { formatPartySize } from "@/lib/field-labels";
+import { calendarFeedToken, isMonth, monthWeeks, shiftMonth, stayPath } from "@/lib/guest-calendar";
 import { REVIEWER_COOKIE } from "@/lib/review";
-import { tripTitle } from "@/lib/trips";
 import { Crumbs } from "../crumbs";
+import { AddPanel } from "./add-panel";
 import { CopyLink } from "./copy-link";
-import { EventForm } from "./event-form";
 import { housemates } from "./people";
-import { StayForm } from "./stay-form";
-import { StayLegend, StayWeeks } from "./stay-weeks";
-import { TripForm } from "./trip-form";
+import { StayLegend, StayWeeks, Swatch, type SwatchKind } from "./stay-weeks";
 
 export const metadata: Metadata = { title: "Calendar" };
 
 const londonToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date());
 const monthName = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+const shortDay = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+const dayOf = (date: string) => shortDay.format(new Date(`${date}T00:00:00Z`));
+// How far ahead Coming up looks; the month view shows anything later
+const COMING_DAYS = 60;
 
 // Calendar apps need the full address of the feed, so build it from APP_URL or this request
 async function siteUrl() {
@@ -32,60 +34,80 @@ async function siteUrl() {
   return `${proto}://${host}`;
 }
 
+// One line of Coming up: a guest, a trip or an event
+type Upcoming = { key: string; kind: SwatchKind; start: string; end: string; title: string; detail: string; href: string };
+
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
   const today = londonToday();
   const { month: monthParam } = await searchParams;
   const month = isMonth(monthParam) ? monthParam : today.slice(0, 7);
   const weeks = monthWeeks(month);
   const [firstDay, lastDay] = [weeks[0][0], weeks.at(-1)!.at(-1)!];
+  const horizon = new Date(Date.parse(`${today}T00:00:00Z`) + COMING_DAYS * 86_400_000).toISOString().slice(0, 10);
+  // Everything that overlaps from..to: the month on show, or Coming up
+  const between = (from: string, to: string) =>
+    Promise.all([
+      db
+        .select({
+          id: applications.id,
+          name: applications.name,
+          partySize: applications.partySize,
+          arrivalDate: applications.arrivalDate,
+          departureDate: applications.departureDate,
+          status: applications.status,
+          addedBy: applications.addedBy,
+        })
+        .from(applications)
+        .where(and(ne(applications.status, "declined"), lte(applications.arrivalDate, to), gte(applications.departureDate, from)))
+        .orderBy(asc(applications.arrivalDate)),
+      db.select().from(trips).where(and(lte(trips.leaveDate, to), gte(trips.backDate, from))).orderBy(asc(trips.leaveDate)),
+      db
+        .select()
+        .from(events)
+        .where(and(lte(events.date, to), gte(sql`coalesce(${events.endDate}, ${events.date})`, from)))
+        .orderBy(asc(events.date)),
+    ]);
 
-  const stays = await db
-    .select({
-      id: applications.id,
-      name: applications.name,
-      partySize: applications.partySize,
-      arrivalDate: applications.arrivalDate,
-      departureDate: applications.departureDate,
-      status: applications.status,
-      addedBy: applications.addedBy,
-    })
-    .from(applications)
-    .where(
-      and(
-        ne(applications.status, "declined"),
-        lte(applications.arrivalDate, lastDay),
-        gte(applications.departureDate, firstDay),
-      ),
-    )
-    .orderBy(asc(applications.arrivalDate));
-
-  const [monthTrips, upcomingTrips, upcomingStays, monthEvents, upcomingEvents, people] = await Promise.all([
-    db
-      .select()
-      .from(trips)
-      .where(and(lte(trips.leaveDate, lastDay), gte(trips.backDate, firstDay)))
-      .orderBy(asc(trips.leaveDate)),
-    db.select().from(trips).where(gte(trips.backDate, today)).orderBy(asc(trips.leaveDate)),
-    db
-      .select()
-      .from(applications)
-      .where(and(isNotNull(applications.addedBy), gte(applications.departureDate, today)))
-      .orderBy(asc(applications.arrivalDate)),
-    db
-      .select()
-      .from(events)
-      .where(and(lte(events.date, lastDay), gte(sql`coalesce(${events.endDate}, ${events.date})`, firstDay)))
-      .orderBy(asc(events.date)),
-    db
-      .select()
-      .from(events)
-      .where(gte(sql`coalesce(${events.endDate}, ${events.date})`, today))
-      .orderBy(asc(events.date)),
+  const [[stays, monthTrips, monthEvents], [comingStays, comingTrips, comingEvents], people] = await Promise.all([
+    between(firstDay, lastDay),
+    between(today, horizon),
     housemates(),
   ]);
-  // Fill in who's adding a trip: the name they last signed a note with, or their login link's first
-  // word. A link can be named "the house", so the note name comes first.
+  // Fill in who's adding something: the name they last signed a note with, or their login link's
+  // first word. A link can be named "the house", so the note name comes first.
   const me = (await cookies()).get(REVIEWER_COOKIE)?.value ?? (await sessionName())?.trim().split(/\s+/)[0] ?? "";
+
+  const upcoming: Upcoming[] = [
+    ...comingStays.map((stay) => ({
+      key: `stay-${stay.id}`,
+      kind: (stay.status === "approved" ? "confirmed" : "requested") as SwatchKind,
+      start: stay.arrivalDate,
+      end: stay.departureDate,
+      title: stay.partySize > 1 ? `${stay.name} (${formatPartySize(stay.partySize)})` : stay.name,
+      detail: [stay.addedBy ? `${stay.addedBy}'s guest` : "Applied to stay", stay.status === "approved" ? "" : "not confirmed yet"]
+        .filter(Boolean)
+        .join(", "),
+      href: stayPath(stay),
+    })),
+    ...comingTrips.map((trip) => ({
+      key: `trip-${trip.id}`,
+      kind: "away" as SwatchKind,
+      start: trip.leaveDate,
+      end: trip.backDate,
+      title: `${trip.person} away`,
+      detail: trip.place ?? "",
+      href: `/dashboard/calendar/trips/${trip.id}`,
+    })),
+    ...comingEvents.map((event) => ({
+      key: `event-${event.id}`,
+      kind: "event" as SwatchKind,
+      start: event.date,
+      end: eventEnd(event),
+      title: event.title,
+      detail: [event.time, event.place, `added by ${event.addedBy}`].filter(Boolean).join(" · "),
+      href: `/dashboard/calendar/events/${event.id}`,
+    })),
+  ].sort((a, b) => a.start.localeCompare(b.start) || a.end.localeCompare(b.end));
 
   const feedPath = `/calendar/${calendarFeedToken(getSessionSecret())}/guests.ics`;
   const feedUrl = `${await siteUrl()}${feedPath}`;
@@ -95,141 +117,123 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <Crumbs />
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+      <div className="mb-4 flex items-center justify-between gap-3">
         <h1 className="section-title">Calendar</h1>
-        <nav className="flex items-center gap-2 text-sm">
-          <Link href={`?month=${shiftMonth(month, -1)}`} className="rounded-[2px] border border-line px-2 py-1 hover:border-tile" aria-label="Previous month">
+        <a href="#add" className="btn-secondary flex items-center gap-1.5">
+          <CalendarPlus className="size-4" strokeWidth={1.75} aria-hidden /> Add
+        </a>
+      </div>
+
+      <section className="card border-2 border-ink/80 p-3 sm:p-5">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <Link
+            href={`?month=${shiftMonth(month, -1)}`}
+            className="flex size-9 items-center justify-center rounded-[2px] border border-line hover:border-ink"
+            aria-label="Previous month"
+          >
             ←
           </Link>
-          <span className="hand min-w-36 text-center text-lg">{monthName.format(new Date(`${month}-01T00:00:00Z`))}</span>
-          <Link href={`?month=${shiftMonth(month, 1)}`} className="rounded-[2px] border border-line px-2 py-1 hover:border-tile" aria-label="Next month">
+          <div className="text-center">
+            <span className="hand block text-lg">{monthName.format(new Date(`${month}-01T00:00:00Z`))}</span>
+            {month !== today.slice(0, 7) && (
+              <Link href="?" className="text-xs text-muted hover:text-pillar hover:underline">
+                Back to today
+              </Link>
+            )}
+          </div>
+          <Link
+            href={`?month=${shiftMonth(month, 1)}`}
+            className="flex size-9 items-center justify-center rounded-[2px] border border-line hover:border-ink"
+            aria-label="Next month"
+          >
             →
           </Link>
-          {month !== today.slice(0, 7) && (
-            <Link href="?" className="ml-1 text-muted hover:underline">
-              Today
-            </Link>
-          )}
-        </nav>
-      </div>
-
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm">
-        <StayLegend />
-        <Link href="/dashboard/applications" className="text-muted hover:text-pillar">
-          All applications →
-        </Link>
-      </div>
-      <StayWeeks weeks={weeks} stays={stays} trips={monthTrips} events={monthEvents} today={today} month={month} />
-
-      <section className="card mt-8">
-        <h2 className="hand text-lg">Going away?</h2>
-        <p className="mt-1 mb-3 text-sm text-muted">
-          Add your trip so the house knows who&apos;s in. Everyone in the house can see it, and Grovelet tells
-          anyone who asks.
-        </p>
-        <TripForm defaults={{ person: me }} people={people} />
-        {upcomingTrips.length > 0 && (
-          <>
-            <h3 className="mt-6 text-sm font-medium">Trips coming up</h3>
-            <ul className="mt-1 divide-y divide-line text-sm">
-              {upcomingTrips.map((trip) => (
-                <li key={trip.id}>
-                  <Link href={`/dashboard/calendar/trips/${trip.id}`} className="flex flex-wrap justify-between gap-x-3 py-2 hover:text-pillar">
-                    <span className="font-medium">{tripTitle(trip)}</span>
-                    <span className="text-muted">
-                      {formatDate(trip.leaveDate)} to {formatDate(trip.backDate)}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </section>
-
-      <section className="card mt-8">
-        <h2 className="hand text-lg">Having a guest?</h2>
-        <p className="mt-1 mb-3 text-sm text-muted">
-          Add a friend or family member staying with you. It goes on the calendar as confirmed, with no
-          application. Grovelet can add one too, in a chat.
-        </p>
-        <StayForm defaults={{ addedBy: me }} people={people} />
-        {upcomingStays.length > 0 && (
-          <>
-            <h3 className="mt-6 text-sm font-medium">Housemates&apos; guests coming up</h3>
-            <ul className="mt-1 divide-y divide-line text-sm">
-              {upcomingStays.map((stay) => (
-                <li key={stay.id}>
-                  <Link href={`/dashboard/calendar/stays/${stay.id}`} className="flex flex-wrap justify-between gap-x-3 py-2 hover:text-pillar">
-                    <span className="font-medium">
-                      {stay.name} <span className="font-normal text-muted">({stay.addedBy}&apos;s guest)</span>
-                    </span>
-                    <span className="text-muted">
-                      {formatDate(stay.arrivalDate)} to {formatDate(stay.departureDate)}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </section>
-
-      <section className="card mt-8">
-        <h2 className="hand text-lg">Something on?</h2>
-        <p className="mt-1 mb-3 text-sm text-muted">
-          Add something the house might want to know about, like a dinner you&apos;re hosting or a gig
-          you&apos;re going to. Grovelet tells anyone who asks what&apos;s on, mentions it in the morning post
-          on the day, and can add one too, in a chat.
-        </p>
-        <EventForm defaults={{ addedBy: me }} people={people} />
-        {upcomingEvents.length > 0 && (
-          <>
-            <h3 className="mt-6 text-sm font-medium">Events coming up</h3>
-            <ul className="mt-1 divide-y divide-line text-sm">
-              {upcomingEvents.map((event) => (
-                <li key={event.id}>
-                  <Link href={`/dashboard/calendar/events/${event.id}`} className="flex flex-wrap justify-between gap-x-3 py-2 hover:text-pillar">
-                    <span className="font-medium">
-                      {eventLabel(event)} <span className="font-normal text-muted">({event.addedBy})</span>
-                    </span>
-                    <span className="text-muted">
-                      {formatDate(event.date)}
-                      {event.endDate && ` to ${formatDate(event.endDate)}`}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </section>
-
-      <section className="card mt-8">
-        <h2 className="hand text-lg">Add to your own calendar</h2>
-        <p className="mt-1 text-sm text-muted">
-          Subscribe once and new guests, housemates&apos; trips and events appear in your calendar by themselves.
-          Requested stays show as &ldquo;Requested: name&rdquo; until they&apos;re approved; declined ones drop off.
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <a href={webcalUrl} className="rounded-[2px] bg-foreground px-3 py-1.5 text-sm text-background hover:opacity-90">
-            Apple Calendar
-          </a>
-          <a
-            href={googleUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-[2px] bg-foreground px-3 py-1.5 text-sm text-background hover:opacity-90"
-          >
-            Google Calendar ↗
-          </a>
-          <CopyLink url={feedUrl} />
         </div>
-        <p className="mt-3 text-xs text-muted">
-          The link works without the house password, so keep it within the house. Google can take
-          several hours to pick up changes; Apple checks about once an hour.
-        </p>
+        <StayWeeks weeks={weeks} stays={stays} trips={monthTrips} events={monthEvents} today={today} month={month} />
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <StayLegend />
+          <Link href="/dashboard/applications" className="text-muted hover:text-pillar">
+            Applications →
+          </Link>
+        </div>
       </section>
+
+      {/* Coming up beside Add on a wide screen, one under the other on a phone */}
+      <div className="mt-6 grid items-start gap-6 lg:grid-cols-2">
+        <ComingUp items={upcoming} today={today} />
+        <AddPanel me={me} people={people} />
+      </div>
+
+      <details className="group card mt-6 border-2 border-ink/80 py-3 text-sm">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
+          <span>
+            <span className="hand text-base">Add to your own calendar</span>
+            <span className="text-muted"> · Apple, Google</span>
+          </span>
+          <span aria-hidden="true" className="text-muted transition-transform group-open:rotate-90">
+            ›
+          </span>
+        </summary>
+        <div className="mt-3 border-t border-line pt-3">
+          <p className="text-muted">
+            Subscribe once and guests, trips and events appear in your own calendar by themselves. Requested stays show as
+            &ldquo;Requested: name&rdquo; until they&apos;re approved.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <a href={webcalUrl} className="rounded-[2px] bg-foreground px-3 py-1.5 text-background hover:opacity-90">
+              Apple Calendar
+            </a>
+            <a
+              href={googleUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-[2px] bg-foreground px-3 py-1.5 text-background hover:opacity-90"
+            >
+              Google Calendar ↗
+            </a>
+            <CopyLink url={feedUrl} />
+          </div>
+          <p className="mt-3 text-xs text-muted">
+            The link works without the house password, so keep it within the house. Google can take several hours to pick up
+            changes; Apple checks about once an hour.
+          </p>
+        </div>
+      </details>
     </>
+  );
+}
+
+// Guests, trips and events in the next two months, soonest first, with a heading where a new month starts
+function ComingUp({ items, today }: { items: Upcoming[]; today: string }) {
+  return (
+    <section className="card border-2 border-ink/80">
+      <h2 className="hand text-lg">Coming up</h2>
+      {items.length === 0 ? (
+        <p className="mt-2 text-sm text-muted">Nothing on the calendar for the next two months.</p>
+      ) : (
+        <ul className="mt-2 divide-y divide-line">
+          {items.map((item, i) => (
+            <li key={item.key}>
+              {i > 0 && items[i - 1].start.slice(0, 7) !== item.start.slice(0, 7) && (
+                <p className="pt-4 pb-1 text-xs tracking-[0.08em] text-muted uppercase">
+                  {monthName.format(new Date(`${item.start.slice(0, 7)}-01T00:00:00Z`))}
+                </p>
+              )}
+              <Link href={item.href} className="group flex items-start gap-3 py-2.5">
+                <span className="w-[5.5rem] shrink-0 text-sm">
+                  <span className="block font-medium">{item.start < today ? "Now" : dayOf(item.start)}</span>
+                  {item.end !== item.start && <span className="block text-xs text-muted">to {dayOf(item.end)}</span>}
+                </span>
+                <Swatch kind={item.kind} className="mt-1 h-4 w-1.5" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium group-hover:text-pillar">{item.title}</span>
+                  {item.detail && <span className="block truncate text-sm text-muted">{item.detail}</span>}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

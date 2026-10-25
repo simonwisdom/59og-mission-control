@@ -138,22 +138,34 @@ function lanes<T>(items: T[], week: string[], first: (item: T) => string, last: 
   });
 }
 
+const SWATCHES = {
+  confirmed: "bg-tile",
+  requested: "border border-dashed border-amber-600 bg-amber-100 dark:bg-amber-900/40",
+  away: "border border-ink/50 bg-card",
+  event: "border border-pillar/40 bg-pillar/10",
+};
+
+export type SwatchKind = keyof typeof SWATCHES;
+
+// The small block each kind of bar is drawn with, for the key and the Coming up list
+export function Swatch({ kind, className = "h-3 w-5" }: { kind: SwatchKind; className?: string }) {
+  return <span aria-hidden className={`inline-block shrink-0 rounded-[2px] ${SWATCHES[kind]} ${className}`} />;
+}
+
 export function StayLegend({ className = "" }: { className?: string }) {
+  const keys: [SwatchKind, string][] = [
+    ["confirmed", "Guest"],
+    ["requested", "Requested"],
+    ["away", "Away"],
+    ["event", "Event"],
+  ];
   return (
     <div className={`flex flex-wrap gap-x-4 gap-y-1 text-muted ${className}`}>
-      <span className="flex items-center gap-1.5">
-        <span className="inline-block h-3 w-5 rounded-[2px] bg-tile" /> Confirmed
-      </span>
-      <span className="flex items-center gap-1.5">
-        <span className="inline-block h-3 w-5 rounded-[2px] border border-dashed border-amber-600 bg-amber-100 dark:bg-amber-900/40" />{" "}
-        Requested
-      </span>
-      <span className="flex items-center gap-1.5">
-        <span className="inline-block h-3 w-5 rounded-[2px] border border-ink/50 bg-card" /> Housemate away
-      </span>
-      <span className="flex items-center gap-1.5">
-        <span className="inline-block h-3 w-5 rounded-[2px] border border-pillar/40 bg-pillar/10" /> Event
-      </span>
+      {keys.map(([kind, label]) => (
+        <span key={kind} className="flex items-center gap-1.5">
+          <Swatch kind={kind} /> {label}
+        </span>
+      ))}
     </div>
   );
 }

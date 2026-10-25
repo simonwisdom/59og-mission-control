@@ -203,6 +203,7 @@ try {
   await check("an event can be added, changed and deleted on the calendar", async () => {
     await page.goto(`${base}/dashboard/calendar`, { waitUntil: "networkidle" });
     const day = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
+    await page.getByRole("button", { name: "Event", exact: true }).click();
     await page.getByLabel("What's on").fill("E2E dinner");
     await page.getByLabel("Day", { exact: true }).fill(day);
     await page.getByLabel("Time (optional)").fill("8pm");
@@ -232,13 +233,15 @@ try {
     await page.goto(`${base}/dashboard/calendar`, { waitUntil: "networkidle" });
     const arrive = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
     const depart = new Date(Date.now() + 5 * 86_400_000).toISOString().slice(0, 10);
+    await page.getByRole("button", { name: "Guest staying" }).click();
     await page.getByLabel("Guest", { exact: true }).fill(TEST_GUEST);
     await page.getByLabel("People").fill("2");
     await page.getByLabel("Arriving").fill(arrive);
     await page.getByLabel("Departing").fill(depart);
     await page.getByLabel("Whose guest").fill(TEST_PERSON);
     await page.getByRole("button", { name: "Add stay" }).click();
-    const listed = page.getByRole("link", { name: new RegExp(`${TEST_GUEST} \\(${TEST_PERSON}'s guest\\)`) });
+    // its line in Coming up
+    const listed = page.getByRole("link", { name: new RegExp(`${TEST_GUEST}.*${TEST_PERSON}'s guest`) });
     await listed.waitFor({ timeout: 30_000 });
     const [added] = await stays();
     expect(added && added.status === "approved" && added.party_size === 2 && added.email === null, `saved as ${JSON.stringify(added)}`);
