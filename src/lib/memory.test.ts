@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Memory } from "@/db/schema";
-import { botMemory, chainOf, DOCUMENT_LIMIT, looksSecret, memoryHistory, NOTE_LIMIT, parseMemory, sameTitle } from "./memory";
+import { botMemory, chainOf, DOCUMENT_LIMIT, memoryHistory, NOTE_LIMIT, parseMemory, sameTitle } from "./memory";
 
 describe("parseMemory", () => {
   it("accepts a note and drops any title it came with", () => {
@@ -24,33 +24,16 @@ describe("parseMemory", () => {
     expect(parseMemory({ kind: "document", title: "Guest policy", body: "a".repeat(DOCUMENT_LIMIT + 1) }).success).toBe(false);
   });
 
-  it("turns away codes and passwords", () => {
-    expect(parseMemory({ kind: "note", body: "The door code is 4471" })).toEqual({
-      success: false,
-      errors: { body: "That looks like a code or password. Grovelet doesn't keep those, so keep it somewhere private" },
+  it("keeps codes and passwords", () => {
+    expect(parseMemory({ kind: "note", body: "The lockbox code is 2735" })).toEqual({
+      success: true,
+      data: { kind: "note", title: null, body: "The lockbox code is 2735", addedBy: null },
     });
+    expect(parseMemory({ kind: "document", title: "Wifi", body: "Wifi password: OliveGrove22" }).success).toBe(true);
   });
 
   it("turns away anything that isn't a note or document", () => {
     expect(parseMemory({ kind: "rule", body: "x" }).success).toBe(false);
-  });
-});
-
-describe("looksSecret", () => {
-  it("spots a code or password with its value", () => {
-    expect(looksSecret("wifi password: olives22")).toBe(true);
-    expect(looksSecret("PIN 1234")).toBe(true);
-    expect(looksSecret("key safe code = 0912")).toBe(true);
-    expect(looksSecret("The front door's code is 4471")).toBe(true);
-    expect(looksSecret("Wifi: OliveGrove22")).toBe(true);
-    expect(looksSecret("The lockbox code is 1234")).toBe(true);
-    expect(looksSecret("The PIN for the alarm is 9921")).toBe(true);
-  });
-
-  it("lets through a mention of a code without one", () => {
-    expect(looksSecret("We give guests the door code on arrival.")).toBe(false);
-    expect(looksSecret("Guests can stay 3 nights, 2 at weekends.")).toBe(false);
-    expect(looksSecret("The wifi router is in the hall.")).toBe(false);
   });
 });
 

@@ -2,7 +2,8 @@ import { z } from "zod";
 import type { Memory } from "@/db/schema";
 
 // Grovelet's memory. The Memory page and Grovelet both send what they save through parseMemory, so
-// the same limits hold however it comes in.
+// the same limits hold however it comes in. Codes and passwords (the lockbox code, the wifi
+// password) are kept like any other note: the house decided Grovelet may hold them.
 
 // A note is a sentence or two; a document about 20 pages
 export const NOTE_LIMIT = 500;
@@ -10,16 +11,6 @@ export const DOCUMENT_LIMIT = 60_000;
 
 export type MemoryInput = Pick<Memory, "kind" | "title" | "body" | "addedBy">;
 export type MemoryErrors = Partial<Record<keyof MemoryInput, string>>;
-
-// A code or password with its value: "the front door's code is 4471", "Wifi: OliveGrove22",
-// "PIN 1234". A best-effort filter, not a guarantee; saying a code exists ("we give guests the
-// door code on arrival") is fine. Grovelet's memory.py has the same pattern.
-const SECRET =
-  /\b(codes?|pass ?words?|passcodes?|pins?|wi-?fi|lockbox|key ?safe|account number|card number|iban)\b[^.\n]{0,30}?((\bis\b|:|=)\s*\S*\d|\s\d{3,})/i;
-
-export function looksSecret(text: string) {
-  return SECRET.test(text);
-}
 
 const memorySchema = z
   .object({
@@ -44,10 +35,6 @@ const memorySchema = z
   .refine((memory) => memory.body.length <= (memory.kind === "note" ? NOTE_LIMIT : DOCUMENT_LIMIT), {
     path: ["body"],
     message: "That's too long to remember",
-  })
-  .refine((memory) => !looksSecret(memory.body), {
-    path: ["body"],
-    message: "That looks like a code or password. Grovelet doesn't keep those, so keep it somewhere private",
   })
   .transform((memory) => ({ ...memory, title: memory.kind === "note" ? null : memory.title }));
 
