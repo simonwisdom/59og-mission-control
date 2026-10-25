@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies, headers } from "next/headers";
-import { and, asc, gte, isNotNull, lte, ne } from "drizzle-orm";
+import { and, asc, gte, isNotNull, lte, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { applications, trips } from "@/db/schema";
+import { applications, events, trips } from "@/db/schema";
 import { getSessionSecret, sessionName } from "@/lib/auth";
+import { eventLabel } from "@/lib/events";
 import { formatDate } from "@/lib/format";
 import { calendarFeedToken, isMonth, monthWeeks, shiftMonth } from "@/lib/guest-calendar";
 import { REVIEWER_COOKIE } from "@/lib/review";
 import { tripTitle } from "@/lib/trips";
 import { Crumbs } from "../crumbs";
 import { CopyLink } from "./copy-link";
+import { EventForm } from "./event-form";
 import { housemates } from "./people";
 import { StayForm } from "./stay-form";
 import { StayLegend, StayWeeks } from "./stay-weeks";
@@ -57,7 +59,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     )
     .orderBy(asc(applications.arrivalDate));
 
-  const [monthTrips, upcomingTrips, upcomingStays, people] = await Promise.all([
+  const [monthTrips, upcomingTrips, upcomingStays, monthEvents, upcomingEvents, people] = await Promise.all([
     db
       .select()
       .from(trips)
@@ -69,6 +71,16 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       .from(applications)
       .where(and(isNotNull(applications.addedBy), gte(applications.departureDate, today)))
       .orderBy(asc(applications.arrivalDate)),
+    db
+      .select()
+      .from(events)
+      .where(and(lte(events.date, lastDay), gte(sql`coalesce(${events.endDate}, ${events.date})`, firstDay)))
+      .orderBy(asc(events.date)),
+    db
+      .select()
+      .from(events)
+      .where(gte(sql`coalesce(${events.endDate}, ${events.date})`, today))
+      .orderBy(asc(events.date)),
     housemates(),
   ]);
   // Fill in who's adding a trip: the name they last signed a note with, or their login link's first
@@ -107,7 +119,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           All applications →
         </Link>
       </div>
-      <StayWeeks weeks={weeks} stays={stays} trips={monthTrips} today={today} month={month} />
+      <StayWeeks weeks={weeks} stays={stays} trips={monthTrips} events={monthEvents} today={today} month={month} />
 
       <section className="card mt-8">
         <h2 className="hand text-lg">Going away?</h2>
@@ -164,9 +176,39 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       </section>
 
       <section className="card mt-8">
+        <h2 className="hand text-lg">Something on?</h2>
+        <p className="mt-1 mb-3 text-sm text-muted">
+          Add something the house might want to know about, like a dinner you&apos;re hosting or a gig
+          you&apos;re going to. Grovelet tells anyone who asks what&apos;s on, mentions it in the morning post
+          on the day, and can add one too, in a chat.
+        </p>
+        <EventForm defaults={{ addedBy: me }} people={people} />
+        {upcomingEvents.length > 0 && (
+          <>
+            <h3 className="mt-6 text-sm font-medium">Events coming up</h3>
+            <ul className="mt-1 divide-y divide-line text-sm">
+              {upcomingEvents.map((event) => (
+                <li key={event.id}>
+                  <Link href={`/dashboard/calendar/events/${event.id}`} className="flex flex-wrap justify-between gap-x-3 py-2 hover:text-pillar">
+                    <span className="font-medium">
+                      {eventLabel(event)} <span className="font-normal text-muted">({event.addedBy})</span>
+                    </span>
+                    <span className="text-muted">
+                      {formatDate(event.date)}
+                      {event.endDate && ` to ${formatDate(event.endDate)}`}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
+
+      <section className="card mt-8">
         <h2 className="hand text-lg">Add to your own calendar</h2>
         <p className="mt-1 text-sm text-muted">
-          Subscribe once and new guests and housemates&apos; trips appear in your calendar by themselves.
+          Subscribe once and new guests, housemates&apos; trips and events appear in your calendar by themselves.
           Requested stays show as &ldquo;Requested: name&rdquo; until they&apos;re approved; declined ones drop off.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">

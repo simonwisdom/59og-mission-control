@@ -1,8 +1,8 @@
-import { and, asc, count, eq, gte, isNull, lte, ne } from "drizzle-orm";
+import { and, asc, count, eq, gte, isNull, lte, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { applications, trips } from "@/db/schema";
+import { applications, events, trips } from "@/db/schema";
 import { getHouseFinances } from "@/lib/actual";
-import { EMAIL_DAYS, TRIP_DAYS, botSummary, botTokenMatches } from "@/lib/bot-summary";
+import { EMAIL_DAYS, EVENT_DAYS_BACK, TRIP_DAYS, botSummary, botTokenMatches } from "@/lib/bot-summary";
 import { getBinCollections } from "@/lib/hackney-bins";
 import { getMailbox, recentEmails, syncHouseMailWithin } from "@/lib/house-mail";
 
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
   const today = londonToday();
   const daysAhead = (days: number) => new Date(Date.parse(`${today}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
   const until = daysAhead(STAY_DAYS);
-  const [[{ pending }], stays, housemateTrips, bins, money, mail] = await Promise.all([
+  const [[{ pending }], stays, housemateTrips, houseEvents, bins, money, mail] = await Promise.all([
     // A housemate's stay waiting on the guest chat's vote is pending too, but it isn't an application
     db.select({ pending: count() }).from(applications).where(and(eq(applications.status, "pending"), isNull(applications.addedBy))),
     db
@@ -49,6 +49,11 @@ export async function GET(request: Request) {
       .from(trips)
       .where(and(gte(trips.backDate, today), lte(trips.leaveDate, daysAhead(TRIP_DAYS))))
       .orderBy(asc(trips.leaveDate)),
+    db
+      .select()
+      .from(events)
+      .where(and(gte(sql`coalesce(${events.endDate}, ${events.date})`, daysAhead(-EVENT_DAYS_BACK)), lte(events.date, daysAhead(TRIP_DAYS))))
+      .orderBy(asc(events.date)),
     getBinCollections(today),
     getHouseFinances(),
     houseMail(),
@@ -60,6 +65,7 @@ export async function GET(request: Request) {
     pendingApplications: pending,
     stays,
     trips: housemateTrips,
+    events: houseEvents,
     shares: money.status === "ok" ? money.shares : null,
     emails: mail,
   });

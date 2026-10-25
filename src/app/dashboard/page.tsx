@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { type ReactNode, Suspense } from "react";
 import { CalendarClock, CalendarDays, type LucideIcon, Mail, NotebookPen, Wallet, Zap } from "lucide-react";
-import { and, asc, count, eq, gt, gte, isNull, lte, ne } from "drizzle-orm";
+import { and, asc, count, eq, gt, gte, isNull, lte, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { applications, memories, trips } from "@/db/schema";
+import { applications, events, memories, trips } from "@/db/schema";
 import { getHouseFinances, isActualConfigured, type RegularPayment } from "@/lib/actual";
 import { isGmailConfigured } from "@/lib/gmail";
 import { getMailbox, recentEmails } from "@/lib/house-mail";
@@ -171,7 +171,7 @@ export default async function DashboardHome() {
     status: applications.status,
     addedBy: applications.addedBy,
   };
-  const [[{ pending }], stays, [later], weekTrips, remembered] = await Promise.all([
+  const [[{ pending }], stays, [later], weekTrips, weekEvents, remembered] = await Promise.all([
     // A housemate's stay waiting on the guest chat's vote is pending too, but it isn't an application
     db.select({ pending: count() }).from(applications).where(and(eq(applications.status, "pending"), isNull(applications.addedBy))),
     db
@@ -197,6 +197,11 @@ export default async function DashboardHome() {
       .from(trips)
       .where(and(lte(trips.leaveDate, lastDay), gte(trips.backDate, firstDay)))
       .orderBy(asc(trips.leaveDate)),
+    db
+      .select()
+      .from(events)
+      .where(and(lte(events.date, lastDay), gte(sql`coalesce(${events.endDate}, ${events.date})`, firstDay)))
+      .orderBy(asc(events.date)),
     db
       .select({ kind: memories.kind })
       .from(memories)
@@ -260,7 +265,7 @@ export default async function DashboardHome() {
               Full calendar →
             </Link>
           </div>
-          <StayWeeks weeks={weeks} stays={stays} trips={weekTrips} today={today} compact />
+          <StayWeeks weeks={weeks} stays={stays} trips={weekTrips} events={weekEvents} today={today} compact />
           <StayLegend className="mt-2 text-xs" />
           {later && (
             <p className="mt-2 text-sm text-muted">

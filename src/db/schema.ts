@@ -155,6 +155,27 @@ export const trips = pgTable("trips", {
   updatedBy: text("updated_by"),
 });
 
+// Events the house might want to know about: something a housemate is hosting or going to, a
+// gig, a party. Added on the calendar, by Grovelet for the housemate it's chatting with, or by
+// Grovelet when someone posts one in the house chat. Every housemate can see and change all of them.
+export const events = pgTable("events", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  // The day it's on, and its last day if it runs over several
+  date: date("date").notNull(),
+  endDate: date("end_date"),
+  // When it starts, as typed ("8pm", "doors 7"), and where, if known
+  time: text("time"),
+  place: text("place"),
+  link: text("link"),
+  // A first name: who added it or posted it, so Grovelet can match it to the housemate it's chatting with
+  addedBy: text("added_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  // The login link's name, "Grovelet", or null after a password login
+  updatedBy: text("updated_by"),
+});
+
 // Grovelet's memory: short notes and whole documents (such as the guest policy) that housemates gave
 // it in chat or added on the Memory page. Grovelet gets the live ones as quoted facts, never as
 // instructions. Nothing is deleted unless someone asks for that in History: a new version of a
@@ -181,6 +202,7 @@ export const memories = pgTable("memories", {
 export type Application =typeof applications.$inferSelect;
 export type Memory = typeof memories.$inferSelect;
 export type Trip = typeof trips.$inferSelect;
+export type HouseEvent = typeof events.$inferSelect;
 export type Note = typeof notes.$inferSelect;
 export type Page = typeof pages.$inferSelect;
 export type Email = typeof emails.$inferSelect;

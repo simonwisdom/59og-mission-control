@@ -114,6 +114,19 @@ describe("guest feed", () => {
     expect(feed).toContain("URL:https://example.com/dashboard/calendar/trips/4\r\n");
   });
 
+  it("adds events over their days, with the time, link and who added it in the description", () => {
+    const event = { id: 9, title: "Jazz, live", date: "2026-11-07", endDate: "2026-11-08", time: "8pm", place: "Cafe Oto", link: "https://example.com/e", addedBy: "Rita" };
+    const feed = guestFeed([], { now, events: [event, { ...event, id: 10, endDate: null, time: null, place: null, link: null }], appUrl: "https://example.com" });
+    expect(feed).toContain("UID:house-event-9@olive-grove\r\n");
+    expect(feed).toContain("SUMMARY:Jazz\\, live\r\n");
+    expect(feed).toContain("LOCATION:Cafe Oto\r\n");
+    expect(feed).toContain("DTEND;VALUE=DATE:20261109\r\n");
+    expect(feed.replace(/\r\n /g, "")).toContain("DESCRIPTION:8pm\\nhttps://example.com/e\\nAdded by Rita\r\n");
+    expect(feed).toContain("URL:https://example.com/dashboard/calendar/events/9\r\n");
+    // a one-day event ends the next day, with no place
+    expect(feed).toMatch(/UID:house-event-10@olive-grove\r\nDTSTAMP:\S+\r\nDTSTART;VALUE=DATE:20261107\r\nDTEND;VALUE=DATE:20261108\r\nSUMMARY:Jazz\\, live\r\nDESCRIPTION:Added by Rita\r\n/);
+  });
+
   it("folds long lines at 75 bytes", () => {
     const feed = guestFeed([stay({ name: "A".repeat(200) })], { now });
     for (const line of feed.split("\r\n")) expect(Buffer.byteLength(line)).toBeLessThanOrEqual(75);

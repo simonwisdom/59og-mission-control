@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { db } from "@/db";
-import { applications, trips } from "@/db/schema";
+import { applications, events, trips } from "@/db/schema";
 import { requireSession, sessionName } from "@/lib/auth";
+import { parseEvent, type EventErrors } from "@/lib/events";
 import { parseStay, stayRow, type StayErrors } from "@/lib/stays";
 import { parseTrip, type TripErrors } from "@/lib/trips";
 
@@ -31,6 +32,31 @@ export async function saveTrip(tripId: number | null, _prev: TripFormState, form
 export async function deleteTrip(tripId: number) {
   await requireSession();
   await db.delete(trips).where(eq(trips.id, tripId));
+  revalidatePath("/dashboard", "layout");
+  redirect("/dashboard/calendar");
+}
+
+export type EventFormState = { errors: EventErrors } | undefined;
+
+// Adds an event, or changes one when eventId is given. Like trips, any housemate can change any event.
+export async function saveEvent(eventId: number | null, _prev: EventFormState, formData: FormData): Promise<EventFormState> {
+  await requireSession();
+  const parsed = parseEvent(Object.fromEntries(formData));
+  if (!parsed.success) return { errors: parsed.errors };
+
+  const updatedBy = await sessionName();
+  if (eventId === null) {
+    await db.insert(events).values({ ...parsed.data, updatedBy });
+  } else {
+    await db.update(events).set({ ...parsed.data, updatedBy, updatedAt: new Date() }).where(eq(events.id, eventId));
+  }
+  revalidatePath("/dashboard", "layout");
+  redirect(`/dashboard/calendar?month=${parsed.data.date.slice(0, 7)}`);
+}
+
+export async function deleteEvent(eventId: number) {
+  await requireSession();
+  await db.delete(events).where(eq(events.id, eventId));
   revalidatePath("/dashboard", "layout");
   redirect("/dashboard/calendar");
 }

@@ -1,21 +1,24 @@
 import Link from "next/link";
-import type { Trip } from "@/db/schema";
+import type { HouseEvent, Trip } from "@/db/schema";
+import { eventEnd, eventLabel } from "@/lib/events";
 import { stayPath, stayTitle, type Stay } from "@/lib/guest-calendar";
 import { tripTitle } from "@/lib/trips";
 
 export type CalendarTrip = Pick<Trip, "id" | "person" | "leaveDate" | "backDate" | "place">;
+export type CalendarEvent = Pick<HouseEvent, "id" | "title" | "date" | "endDate" | "time" | "place">;
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const shortMonth = new Intl.DateTimeFormat("en-GB", { month: "short", timeZone: "UTC" });
 
-// Weeks of days with each stay drawn as a bar across the days it covers, and housemates' trips
-// as outlined bars under them. The calendar page
+// Weeks of days with each stay drawn as a bar across the days it covers, housemates' trips
+// as outlined bars under them, and events under those. The calendar page
 // passes the month it shows, so days outside it fade; the dashboard shows a run of weeks
 // instead and names the month on the first day of each.
 export function StayWeeks({
   weeks,
   stays,
   trips = [],
+  events = [],
   today,
   month,
   compact = false,
@@ -23,6 +26,7 @@ export function StayWeeks({
   weeks: string[][];
   stays: Stay[];
   trips?: CalendarTrip[];
+  events?: CalendarEvent[];
   today: string;
   month?: string;
   compact?: boolean;
@@ -39,6 +43,9 @@ export function StayWeeks({
       {weeks.map((week, weekIndex) => {
         const weekStays = stays.filter((s) => s.arrivalDate <= week[6] && s.departureDate >= week[0]);
         const weekTrips = trips.filter((t) => t.leaveDate <= week[6] && t.backDate >= week[0]);
+        const weekEvents = events.filter((e) => e.date <= week[6] && eventEnd(e) >= week[0]);
+        const tripRows = lanes(weekTrips, week, (t) => t.leaveDate, (t) => t.backDate);
+        const tripLaneCount = Math.max(0, ...tripRows.map((row) => row.lane + 1));
         return (
           <div
             key={week[0]}
@@ -83,7 +90,7 @@ export function StayWeeks({
                 </Link>
               );
             })}
-            {tripLanes(weekTrips, week).map(({ trip, start, end, lane }) => {
+            {tripRows.map(({ item: trip, start, end, lane }) => {
               return (
                 <Link
                   key={`trip-${trip.id}`}
@@ -97,6 +104,18 @@ export function StayWeeks({
                 </Link>
               );
             })}
+            {lanes(weekEvents, week, (e) => e.date, eventEnd).map(({ item: event, start, end, lane }) => (
+              <Link
+                key={`event-${event.id}`}
+                href={`/dashboard/calendar/events/${event.id}`}
+                title={eventLabel(event)}
+                style={{ gridColumn: `${start + 1} / ${end + 2}`, gridRow: weekStays.length + tripLaneCount + lane + 2 }}
+                className="mx-0.5 truncate rounded-[2px] border border-pillar/40 bg-pillar/10 px-1.5 py-0.5 text-xs text-pillar hover:border-pillar"
+              >
+                {event.date < week[0] && end > start && "… "}
+                {compact ? event.title : eventLabel(event)}
+              </Link>
+            ))}
           </div>
         );
       })}
@@ -104,18 +123,18 @@ export function StayWeeks({
   );
 }
 
-// Each trip's days in the week, on the first row free of other trips, so trips that don't overlap
-// share a row. Trips come sorted by leaving date.
-function tripLanes(trips: CalendarTrip[], week: string[]) {
+// Each trip's (or event's) days in the week, on the first row free of the others, so ones that
+// don't overlap share a row. They come sorted by first day.
+function lanes<T>(items: T[], week: string[], first: (item: T) => string, last: (item: T) => string) {
   const laneEnds: number[] = [];
-  return trips.map((trip) => {
-    const start = Math.max(0, week.indexOf(trip.leaveDate));
-    const endIndex = week.indexOf(trip.backDate);
+  return items.map((item) => {
+    const start = Math.max(0, week.indexOf(first(item)));
+    const endIndex = week.indexOf(last(item));
     const end = endIndex === -1 ? 6 : endIndex;
     let lane = laneEnds.findIndex((laneEnd) => laneEnd < start);
     if (lane === -1) lane = laneEnds.length;
     laneEnds[lane] = end;
-    return { trip, start, end, lane };
+    return { item, start, end, lane };
   });
 }
 
@@ -131,6 +150,9 @@ export function StayLegend({ className = "" }: { className?: string }) {
       </span>
       <span className="flex items-center gap-1.5">
         <span className="inline-block h-3 w-5 rounded-[2px] border border-ink/50 bg-card" /> Housemate away
+      </span>
+      <span className="flex items-center gap-1.5">
+        <span className="inline-block h-3 w-5 rounded-[2px] border border-pillar/40 bg-pillar/10" /> Event
       </span>
     </div>
   );

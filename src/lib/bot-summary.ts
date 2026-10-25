@@ -2,7 +2,7 @@ import type { RegularPayment } from "./actual";
 import { passwordMatches } from "./session";
 import type { Collection } from "./hackney-bins";
 import type { Stay } from "./guest-calendar";
-import type { Email, Trip } from "@/db/schema";
+import type { Email, HouseEvent, Trip } from "@/db/schema";
 import { linkGroups } from "./useful-links";
 
 type EmailRow = Pick<Email, "fromName" | "fromAddress" | "to" | "subject" | "sentAt" | "body" | "attachments" | "labels">;
@@ -28,6 +28,10 @@ export type BotSummary = {
   // Housemates' trips not over yet that start within the next TRIP_DAYS, soonest first. The id lets
   // Grovelet change or delete one through /api/bot/trips.
   trips: BotTrip[];
+  // Events on the calendar from a week ago through the next EVENT_DAYS, soonest first: added on the
+  // dashboard, by Grovelet for a housemate, or noticed in the house chat. addedBy is who added or
+  // posted it; the id lets Grovelet change or delete one that housemate added through /api/bot/events.
+  events: BotEvent[];
   // Each housemate's share this month, or null when Actual isn't set up or failed
   shares: { name: string; status: RegularPayment["status"]; usualDay: number; lastPaidOn: string | null; daysLate: number }[] | null;
   // The house Gmail's mail from the last two weeks, newest first, or null when it isn't connected.
@@ -52,6 +56,8 @@ export type BotStay = {
 
 export type BotTrip = Pick<Trip, "id" | "person" | "leaveDate" | "backDate" | "place">;
 
+export type BotEvent = Pick<HouseEvent, "id" | "title" | "date" | "endDate" | "time" | "place" | "link" | "addedBy">;
+
 export type BotEmail = {
   from: string;
   to: string;
@@ -69,6 +75,8 @@ export type BotEmail = {
 export const EMAIL_DAYS = 14;
 // Trips starting up to this many days ahead, so "who's away at Christmas?" works from October
 export const TRIP_DAYS = 90;
+// Events from this many days back, so "how was the party?" still has it, up to TRIP_DAYS ahead
+export const EVENT_DAYS_BACK = 7;
 const EMAIL_COUNT = 15;
 const TEXT_LIMIT = 2000;
 
@@ -83,6 +91,7 @@ export function botSummary(input: {
   pendingApplications: number;
   stays: Stay[];
   trips: BotTrip[];
+  events: BotEvent[];
   shares: RegularPayment[] | null;
   emails: EmailRow[] | null;
 }): BotSummary {
@@ -102,6 +111,7 @@ export function botSummary(input: {
         addedBy: stay.addedBy,
       })),
     trips: input.trips.map(({ id, person, leaveDate, backDate, place }) => ({ id, person, leaveDate, backDate, place })),
+    events: input.events.map(({ id, title, date, endDate, time, place, link, addedBy }) => ({ id, title, date, endDate, time, place, link, addedBy })),
     shares:
       input.shares?.map((share) => ({
         name: share.payee,

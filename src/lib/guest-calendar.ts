@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
-import type { Application, Trip } from "@/db/schema";
+import type { Application, HouseEvent, Trip } from "@/db/schema";
+import { eventEnd } from "./events";
 import { formatPartySize } from "./field-labels";
 import { nextDay } from "./dates";
 import { passwordMatches } from "./session";
@@ -7,7 +8,7 @@ import { tripTitle } from "./trips";
 
 export { isMonth, monthWeeks, nextDay, shiftMonth, weeksFrom } from "./dates";
 
-// Guest stays and housemates' trips as a calendar: a month grid on the dashboard, and a feed housemates subscribe to
+// Guest stays, housemates' trips and house events as a calendar: a month grid on the dashboard, and a feed housemates subscribe to
 // from Apple or Google Calendar. Calendar apps can't log in, so the feed URL carries a secret
 // derived from SESSION_SECRET; changing SESSION_SECRET changes the link and cuts off old ones.
 
@@ -53,11 +54,21 @@ function fold(line: string) {
 const compactDate = (date: string) => date.replaceAll("-", "");
 
 // An all-day event from arrival through the departure day, so the day they leave shows too, and
-// the same for each trip from the day they leave to the day they're back.
+// the same for each trip from the day they leave to the day they're back, and each event over its days.
 // Only confirmed and requested stays belong in the feed; declined ones are left out by the caller.
 export function guestFeed(
   stays: Stay[],
-  { appUrl, now = new Date(), trips = [] }: { appUrl?: string; now?: Date; trips?: Pick<Trip, "id" | "person" | "leaveDate" | "backDate" | "place">[] },
+  {
+    appUrl,
+    now = new Date(),
+    trips = [],
+    events: houseEvents = [],
+  }: {
+    appUrl?: string;
+    now?: Date;
+    trips?: Pick<Trip, "id" | "person" | "leaveDate" | "backDate" | "place">[];
+    events?: Pick<HouseEvent, "id" | "title" | "date" | "endDate" | "time" | "place" | "link" | "addedBy">[];
+  },
 ) {
   const stamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
   const base = appUrl?.replace(/\/$/, "");
@@ -84,6 +95,20 @@ export function guestFeed(
     ...(base ? [`URL:${base}/dashboard/calendar/trips/${trip.id}`] : []),
     "END:VEVENT",
   ]);
+  // All day, since the time is as someone typed it ("doors 7"); it goes in the description instead
+  const eventLines = houseEvents.flatMap((event) => [
+    "BEGIN:VEVENT",
+    `UID:house-event-${event.id}@olive-grove`,
+    `DTSTAMP:${stamp}`,
+    `DTSTART;VALUE=DATE:${compactDate(event.date)}`,
+    `DTEND;VALUE=DATE:${compactDate(nextDay(eventEnd(event)))}`,
+    `SUMMARY:${escapeText(event.title)}`,
+    ...(event.place ? [`LOCATION:${escapeText(event.place)}`] : []),
+    `DESCRIPTION:${escapeText([event.time, event.link, `Added by ${event.addedBy}`].filter(Boolean).join("\n"))}`,
+    "TRANSP:TRANSPARENT",
+    ...(base ? [`URL:${base}/dashboard/calendar/events/${event.id}`] : []),
+    "END:VEVENT",
+  ]);
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -96,6 +121,7 @@ export function guestFeed(
     "X-PUBLISHED-TTL:PT1H",
     ...events,
     ...tripEvents,
+    ...eventLines,
     "END:VCALENDAR",
   ];
   return lines.map(fold).join("\r\n") + "\r\n";
