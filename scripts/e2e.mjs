@@ -177,7 +177,7 @@ try {
     await page.goto(`${base}/dashboard/calendar`, { waitUntil: "networkidle" });
     const leave = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
     const back = new Date(Date.now() + 5 * 86_400_000).toISOString().slice(0, 10);
-    await page.getByLabel("Who").fill(TEST_PERSON);
+    await page.getByLabel("Who", { exact: true }).fill(TEST_PERSON);
     await page.getByLabel("Leaving").fill(leave);
     await page.getByLabel("Back").fill(back);
     await page.getByLabel("Where (optional)").fill("Testville");
