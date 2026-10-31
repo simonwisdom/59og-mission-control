@@ -5,7 +5,7 @@ import type { Stay } from "./guest-calendar";
 import type { Email, HouseEvent, Trip } from "@/db/schema";
 import { linkGroups } from "./useful-links";
 
-type EmailRow = Pick<Email, "fromName" | "fromAddress" | "to" | "subject" | "sentAt" | "body" | "attachments" | "labels">;
+export type EmailRow = Pick<Email, "fromName" | "fromAddress" | "to" | "subject" | "sentAt" | "body" | "attachments" | "labels">;
 
 // A short read-only summary for Grovelet, the house chat bot: what's coming up and who has paid
 // their share. Grovelet posts what it reads into the house group chat, where people
@@ -66,7 +66,7 @@ export type BotEmail = {
   date: string;
   // Sent from the house account rather than to it
   sent: boolean;
-  // Cut to TEXT_LIMIT characters
+  // Cut to TEXT_LIMIT characters here, and to SEARCH_TEXT_LIMIT in the mail search
   text: string;
   attachments: string[];
 };
@@ -79,6 +79,20 @@ export const TRIP_DAYS = 90;
 export const EVENT_DAYS_BACK = 7;
 const EMAIL_COUNT = 15;
 const TEXT_LIMIT = 2000;
+
+// One stored email as Grovelet reads it, its text cut to textLimit characters with "…" when cut.
+// The summary feed and the mail search (/api/bot/emails) both use it.
+export function botEmail(email: EmailRow, textLimit: number): BotEmail {
+  return {
+    from: email.fromAddress && email.fromAddress !== email.fromName ? `${email.fromName} <${email.fromAddress}>` : email.fromName,
+    to: email.to,
+    subject: email.subject,
+    date: email.sentAt.toISOString(),
+    sent: email.labels.includes("SENT"),
+    text: email.body.length > textLimit ? `${email.body.slice(0, textLimit)}…` : email.body,
+    attachments: email.attachments.map((a) => a.filename || a.mimeType),
+  };
+}
 
 export function botTokenMatches(header: string | null, token: string | undefined) {
   if (!token || !header?.startsWith("Bearer ")) return false;
@@ -120,16 +134,7 @@ export function botSummary(input: {
         lastPaidOn: share.lastPaidOn,
         daysLate: share.daysLate,
       })) ?? null,
-    emails:
-      input.emails?.slice(0, EMAIL_COUNT).map((email) => ({
-        from: email.fromAddress && email.fromAddress !== email.fromName ? `${email.fromName} <${email.fromAddress}>` : email.fromName,
-        to: email.to,
-        subject: email.subject,
-        date: email.sentAt.toISOString(),
-        sent: email.labels.includes("SENT"),
-        text: email.body.length > TEXT_LIMIT ? `${email.body.slice(0, TEXT_LIMIT)}…` : email.body,
-        attachments: email.attachments.map((a) => a.filename || a.mimeType),
-      })) ?? null,
+    emails: input.emails?.slice(0, EMAIL_COUNT).map((email) => botEmail(email, TEXT_LIMIT)) ?? null,
     links: linkGroups.flatMap((group) =>
       group.links.flatMap(({ name, note, href }) => (href ? [{ group: group.title, name, note, url: href }] : [])),
     ),

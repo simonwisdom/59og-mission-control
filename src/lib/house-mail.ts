@@ -1,6 +1,7 @@
-import { and, desc, eq, gte, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { emails, houseMailbox } from "@/db/schema";
+import { type MailSearch, SEARCH_TEXT_LIMIT, containsPattern } from "./bot-mail-search";
 import { GmailError, accessToken, fetchChanges, isGmailConfigured } from "./gmail";
 
 // Syncs the house Gmail into the emails table when someone looks: at most every 10 minutes, or
@@ -58,6 +59,36 @@ async function runSync() {
     const message = error instanceof GmailError ? error.message : "Couldn't reach Gmail";
     await db.update(houseMailbox).set({ lastSyncAt: new Date(), lastError: message }).where(eq(houseMailbox.id, box.id));
   }
+}
+
+// Grovelet's mail search: emails, any age, holding any of the words (case aside, anywhere in the
+// subject, sender's name or address, recipients or text), those holding the most words first, then
+// newest. Deleted ones are left out. Bodies come back cut to just over SEARCH_TEXT_LIMIT, so
+// botEmail can cut them and add "…". more is true when more than limit matched.
+export async function searchEmails({ words, limit }: MailSearch, reader: Pick<typeof db, "select"> = db) {
+  const haystack = sql`concat_ws(' ', ${emails.subject}, ${emails.fromName}, ${emails.fromAddress}, ${emails.to}, ${emails.body})`;
+  const matched = sql.join(
+    words.map((word) => sql`(case when ${haystack} ilike ${containsPattern(word)} escape '\\' then 1 else 0 end)`),
+    sql` + `,
+  );
+  const rows = await reader
+    .select({
+      id: emails.id,
+      fromName: emails.fromName,
+      fromAddress: emails.fromAddress,
+      to: emails.to,
+      subject: emails.subject,
+      sentAt: emails.sentAt,
+      body: sql<string>`left(${emails.body}, ${SEARCH_TEXT_LIMIT + 1})`,
+      attachments: emails.attachments,
+      labels: emails.labels,
+      matched: sql<number>`(${matched})`.mapWith(Number),
+    })
+    .from(emails)
+    .where(and(eq(emails.deleted, false), sql`(${matched}) > 0`))
+    .orderBy(sql`(${matched}) desc`, desc(emails.sentAt), desc(emails.id))
+    .limit(limit + 1);
+  return { rows: rows.slice(0, limit), more: rows.length > limit };
 }
 
 // Newest first, leaving out deleted ones
