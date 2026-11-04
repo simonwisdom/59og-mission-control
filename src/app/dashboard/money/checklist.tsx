@@ -1,5 +1,5 @@
 import { CircleAlert, CircleCheck, CircleDashed, CircleDot } from "lucide-react";
-import type { RegularPayment } from "@/lib/actual";
+import { GRACE_DAYS, type RegularPayment } from "@/lib/actual";
 import { formatPence } from "@/lib/format";
 
 const shortDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
@@ -63,10 +63,17 @@ export function Checklist({
       ) : (
         <ul className="mt-2 divide-y divide-line">
           {payments.map((p) => {
-            const attention = p.status === "late" || p.status === "part-paid";
+            // Part of a share in before its usual day is fine: rent and bills can come separately
+            const attention = p.status === "late" || (p.status === "part-paid" && p.daysLate > GRACE_DAYS);
             return (
               <li key={p.payee} className="flex items-center gap-3 py-2.5">
-                <span className="shrink-0">{icons[p.status]}</span>
+                <span className="shrink-0">
+                  {p.status === "part-paid" && !attention ? (
+                    <CircleDot className="size-5 text-muted" aria-label="Part paid" />
+                  ) : (
+                    icons[p.status]
+                  )}
+                </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{p.payee}</p>
                   <p className={`text-sm ${attention ? "text-danger" : "text-muted"}`}>{paymentStatus(p, kind)}</p>

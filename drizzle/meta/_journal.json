@@ -64,6 +64,13 @@
       "when": 1792942982288,
       "tag": "0008_add_events",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793803538950,
+      "tag": "0009_add_housemates",
+      "breakpoints": true
     }
   ]
 }

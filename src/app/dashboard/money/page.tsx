@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { asc } from "drizzle-orm";
+import { db } from "@/db";
+import { housemates } from "@/db/schema";
 import { getHouseFinances, type CategorySpend } from "@/lib/actual";
 import { formatPence } from "@/lib/format";
 import { Crumbs } from "../crumbs";
 import { Checklist } from "./checklist";
+import { WhoIsThis } from "./who-is-this";
 
 export const metadata: Metadata = { title: "House money" };
 
@@ -38,7 +43,10 @@ function SpendingBars({ rows }: { rows: CategorySpend[] }) {
 }
 
 export default async function MoneyPage() {
-  const money = await getHouseFinances();
+  const [money, people] = await Promise.all([
+    getHouseFinances(),
+    db.select().from(housemates).orderBy(asc(housemates.name)),
+  ]);
   const month = money.status === "ok" ? monthName.format(new Date(`${money.month}-01T00:00:00Z`)) : "";
 
   return (
@@ -70,23 +78,33 @@ export default async function MoneyPage() {
 
           <h2 className="section-title mt-8 mb-3">{month} so far</h2>
           <div className="grid items-start gap-3 md:grid-cols-2">
+            <div>
+              <Checklist
+                title={money.matched ? "Rent and bills in" : "Shares"}
+                kind="share"
+                payments={money.shares}
+                empty="No regular payments in yet. Anyone who pays in most months shows here."
+              />
+              <WhoIsThis payments={money.unmatched} housemates={people} />
+              <p className="mt-2 text-sm">
+                <Link href="/dashboard/money/housemates" className="text-pillar hover:underline">
+                  {money.matched ? "Housemates, amounts and references" : "Add housemates and their rent"} →
+                </Link>
+              </p>
+            </div>
             <Checklist
-              title="Shares"
-              kind="share"
-              payments={money.shares}
-              empty="No regular payments in yet. Anyone who pays in most months shows here."
-            />
-            <Checklist
-              title="Rent and bills"
+              title="Paid out"
               kind="bill"
               payments={money.bills}
               empty="No regular bills yet. Anything paid once a month, most months, shows here."
             />
           </div>
           <p className="mt-2 text-xs text-muted">
-            Worked out from the last three months: anyone who paid in, and any bill that went out once a month, in at
-            least two of them. A share is expected to match last month&apos;s; a bill shows what it came to this month
-            once it&apos;s gone out. A payment shows as late three days after its usual day.
+            {money.matched
+              ? "Each housemate's rent and bills, matched by the reference on their payment. "
+              : "Worked out from the last three months: anyone who paid in in at least two of them, expected to match last month's. "}
+            A bill paid out is anything that went out once a month in at least two of the last three months, with what
+            it came to this month once it&apos;s gone. A payment shows as late three days after its usual day.
           </p>
 
           <p className="mt-6 mb-3">

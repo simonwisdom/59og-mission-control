@@ -41,6 +41,7 @@ const PAGES = [
   "/dashboard/calendar",
   "/dashboard/energy",
   "/dashboard/money",
+  "/dashboard/money/housemates",
   "/dashboard/email",
   "/dashboard/pages",
   "/dashboard/login-links",

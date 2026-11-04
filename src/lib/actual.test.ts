@@ -123,6 +123,31 @@ describe("summarise", () => {
       { id: "old", date: "2026-09-20", account: "House account", payee: "Sainsbury's", category: null, notes: null, amount: -5_00 },
     ]);
   });
+
+  it("matches shares to the saved housemates by bank reference once there are any", () => {
+    const rent = {
+      housemates: [{ id: 1, name: "Jo", rent: 500_00, bills: 0 }],
+      rules: [{ reference: "jo rent", housemateId: 1 }],
+    };
+    const result = summarise(
+      data([
+        txn("1", "2026-10-02", 500_00, { payee: "simon", notes: "JO RENT" }),
+        txn("2", "2026-10-03", 20_00, { payee: "simon", notes: "Thanks for dinner" }),
+        txn("3", "2026-10-04", 9_00, { payee: "jo" }),
+        txn("4", "2026-10-05", 100_00, { payee: "pot", transfer_id: "x" }),
+      ]),
+      "2026-10-20",
+      rent,
+    );
+    expect(result.matched).toBe(true);
+    expect(result.shares).toMatchObject([{ payee: "Jo", status: "paid", paid: 500_00 }]);
+    // With no reference the payee stands in; transfers between the house's accounts are left out
+    expect(result.unmatched.map((p) => [p.id, p.reference])).toEqual([
+      ["3", "Jo"],
+      ["2", "Thanks for dinner"],
+    ]);
+    expect(summarise(data([]), "2026-10-20").matched).toBe(false);
+  });
 });
 
 describe("monthsBefore", () => {

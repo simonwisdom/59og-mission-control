@@ -10,6 +10,7 @@
 import os from "node:os";
 import path from "node:path";
 import { mkdir } from "node:fs/promises";
+import { rentSummary, type Housemate, type IncomingPayment, type PaymentRule } from "./rent";
 
 // Amounts are whole pence, as Actual stores them: -1234 is £12.34 out
 export type FinanceAccount = { name: string; balance: number };
@@ -52,9 +53,14 @@ export type HouseFinances =
       moneyOut: number;
       // Spending this month, biggest first, as positive pence
       spending: CategorySpend[];
-      // Housemates' shares coming in and bills going out this month, in order of their usual day
+      // Housemates' rent and bills coming in and bills going out this month, in order of their usual day
       shares: RegularPayment[];
       bills: RegularPayment[];
+      // True when shares are matched to the housemates saved on the dashboard; false while there are
+      // none and shares are guessed from who paid in most months
+      matched: boolean;
+      // Payments in from this month and last that aren't matched to a housemate yet, newest first
+      unmatched: IncomingPayment[];
       // Newest first
       recent: FinanceTransaction[];
     };
@@ -87,7 +93,7 @@ const HISTORY_MONTHS = 3;
 // A payment counts as regular when it came in at least this many of those months
 const REGULAR_IN = 2;
 // Days after the usual day before a payment shows as late, for weekends and bank delays
-const GRACE_DAYS = 3;
+export const GRACE_DAYS = 3;
 // A share counts as paid when it's within this much of the expected amount, in pence
 const SHARE_TOLERANCE = 100;
 
@@ -174,7 +180,11 @@ export function pickAccounts(accounts: ActualAccount[], names: string | undefine
 // Moves between the house's own accounts and the opening balance aren't money in or out
 const isRealMoney = (t: ActualTransaction) => !t.transfer_id && !t.starting_balance_flag;
 
-export function summarise(data: ActualData, today: string): Extract<HouseFinances, { status: "ok" }> {
+export function summarise(
+  data: ActualData,
+  today: string,
+  rent: { housemates: Housemate[]; rules: PaymentRule[] } = { housemates: [], rules: [] },
+): Extract<HouseFinances, { status: "ok" }> {
   const month = today.slice(0, 7);
   const accountName = new Map(data.accounts.map((a) => [a.id, a.name]));
   const payeeName = new Map(data.payees.map((p) => [p.id, p.name]));
@@ -202,6 +212,18 @@ export function summarise(data: ActualData, today: string): Extract<HouseFinance
   const payments = shown
     .filter((t) => isRealMoney(t) && t.payee && payeeName.has(t.payee))
     .map((t) => ({ date: t.date, amount: t.amount, payee: payeeName.get(t.payee!)! }));
+
+  // The bank reference says whose rent it is; the payee is only a tidied copy of it
+  const incoming = shown
+    .filter((t) => isRealMoney(t) && t.amount > 0)
+    .map((t) => ({
+      id: t.id,
+      date: t.date,
+      amount: t.amount,
+      reference: t.notes || (t.payee && payeeName.get(t.payee)) || "",
+    }));
+  const matched = rent.housemates.length > 0;
+  const housemates = matched ? rentSummary(incoming, rent.housemates, rent.rules, today) : null;
 
   const recent = shown
     .filter((t) => !t.starting_balance_flag)
@@ -232,8 +254,10 @@ export function summarise(data: ActualData, today: string): Extract<HouseFinance
     spending: [...spending]
       .map(([category, amount]) => ({ category, amount }))
       .sort((a, b) => b.amount - a.amount),
-    shares: regularPayments(payments, "in", today),
+    shares: housemates?.shares ?? regularPayments(payments, "in", today),
     bills: regularPayments(payments, "out", today),
+    matched,
+    unmatched: housemates?.unmatched ?? [],
     recent,
   };
 }
@@ -289,6 +313,17 @@ let inFlight: Promise<ActualData> | null = null;
 export const isActualConfigured = () =>
   Boolean(process.env.ACTUAL_SERVER_URL && process.env.ACTUAL_PASSWORD && process.env.ACTUAL_SYNC_ID);
 
+// The housemates and their references from the dashboard. Loaded here rather than at the top so
+// the tests of summarise don't need a database.
+async function loadRent() {
+  const [{ db }, { housemates, paymentRules }] = await Promise.all([import("@/db"), import("@/db/schema")]);
+  const [people, rules] = await Promise.all([db.select().from(housemates), db.select().from(paymentRules)]);
+  return {
+    housemates: people.map(({ id, name, rent, bills }) => ({ id, name, rent, bills })),
+    rules: rules.map(({ reference, housemateId }) => ({ reference, housemateId })),
+  };
+}
+
 export async function getHouseFinances(): Promise<HouseFinances> {
   const serverURL = process.env.ACTUAL_SERVER_URL;
   const password = process.env.ACTUAL_PASSWORD;
@@ -308,7 +343,7 @@ export async function getHouseFinances(): Promise<HouseFinances> {
       });
       cached = { at: Date.now(), data: await inFlight };
     }
-    return summarise(cached.data, londonDate(Date.now()));
+    return summarise(cached.data, londonDate(Date.now()), await loadRent());
   } catch (error) {
     return { status: "error", message: error instanceof Error ? error.message : String(error) };
   }

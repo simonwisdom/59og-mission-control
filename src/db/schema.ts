@@ -199,6 +199,33 @@ export const memories = pgTable("memories", {
   removedBy: text("removed_by"),
 });
 
+// The housemates who pay rent and bills into the house account, each a fixed monthly amount in
+// pence. A couple sharing a room is one row. House money matches payments in to these.
+export const housemates = pgTable("housemates", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  rent: integer("rent").notNull(),
+  bills: integer("bills").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  // The login link's name, or null after a password login
+  updatedBy: text("updated_by"),
+});
+
+// Bank references that say whose payment it is: "rita rent" is Rita's. The bank feed has no sender,
+// only the reference, so these are picked on House money. housemateId null marks a reference that is
+// nobody's rent or bills, such as a guest paying for a stay. Two housemates can share a reference;
+// then the amount tells them apart.
+export const paymentRules = pgTable("payment_rules", {
+  id: serial("id").primaryKey(),
+  // As normaliseReference gives it: lower case, without months or years
+  reference: text("reference").notNull(),
+  housemateId: integer("housemate_id").references(() => housemates.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  // The login link's name, or null after a password login
+  addedBy: text("added_by"),
+});
+
 export type Application =typeof applications.$inferSelect;
 export type Memory = typeof memories.$inferSelect;
 export type Trip = typeof trips.$inferSelect;
