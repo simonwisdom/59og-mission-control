@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { RegularPayment } from "./actual";
+import { GRACE_DAYS, type RegularPayment } from "./actual";
 import { botSummary, botTokenMatches } from "./bot-summary";
 import { linkGroups } from "./useful-links";
 
@@ -65,10 +65,27 @@ describe("botSummary", () => {
   it("keeps who has paid but leaves out every amount", () => {
     const summary = botSummary({ ...base, shares: [share, { ...share, payee: "Kit", paid: 0, lastPaidOn: null, status: "late", daysLate: 5 }] });
     expect(summary.shares).toEqual([
-      { name: "Sam", status: "paid", usualDay: 1, lastPaidOn: "2026-10-01", daysLate: 0 },
-      { name: "Kit", status: "late", usualDay: 1, lastPaidOn: null, daysLate: 5 },
+      { name: "Sam", status: "paid", usualDay: 1, lastPaidOn: "2026-10-01", daysLate: 0, attention: false },
+      { name: "Kit", status: "late", usualDay: 1, lastPaidOn: null, daysLate: 5, attention: true },
     ]);
     expect(JSON.stringify(summary)).not.toContain("65000");
+  });
+
+  it("flags the shares the dashboard flags: late, or part-paid past the grace days", () => {
+    const part = { ...share, paid: 30000, status: "part-paid" as const };
+    const summary = botSummary({
+      ...base,
+      shares: [
+        { ...part, payee: "Within", daysLate: GRACE_DAYS },
+        { ...part, payee: "Past", daysLate: GRACE_DAYS + 1 },
+        { ...share, payee: "Due", paid: 0, lastPaidOn: null, status: "due", daysLate: 2 },
+      ],
+    });
+    expect(summary.shares?.map(({ name, attention }) => [name, attention])).toEqual([
+      ["Within", false],
+      ["Past", true],
+      ["Due", false],
+    ]);
   });
 
   it("says null when money isn't available, and keeps two bin days", () => {

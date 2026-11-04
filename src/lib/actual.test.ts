@@ -1,12 +1,28 @@
 import { describe, expect, it } from "vitest";
 import {
+  GRACE_DAYS,
   monthsBefore,
+  needsAttention,
   pickAccounts,
   regularPayments,
   summarise,
   type ActualData,
   type ActualTransaction,
 } from "./actual";
+
+describe("needsAttention", () => {
+  it("flags late payments, and part-paid ones only past the grace days", () => {
+    expect(needsAttention({ status: "late", daysLate: GRACE_DAYS + 1 })).toBe(true);
+    expect(needsAttention({ status: "part-paid", daysLate: 0 })).toBe(false);
+    expect(needsAttention({ status: "part-paid", daysLate: GRACE_DAYS })).toBe(false);
+    expect(needsAttention({ status: "part-paid", daysLate: GRACE_DAYS + 1 })).toBe(true);
+  });
+
+  it("leaves paid and not-yet-due payments alone", () => {
+    expect(needsAttention({ status: "paid", daysLate: 0 })).toBe(false);
+    expect(needsAttention({ status: "due", daysLate: GRACE_DAYS })).toBe(false);
+  });
+});
 
 describe("pickAccounts", () => {
   const accounts = [

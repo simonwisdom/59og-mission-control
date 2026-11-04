@@ -94,6 +94,13 @@ const HISTORY_MONTHS = 3;
 const REGULAR_IN = 2;
 // Days after the usual day before a payment shows as late, for weekends and bank delays
 export const GRACE_DAYS = 3;
+
+// Whether a share or bill needs chasing: late, or part-paid and past the grace days. Part of a
+// share in before then is fine: rent and bills can come separately. The dashboard and Grovelet's
+// feed both use this, so they agree on who's late.
+export function needsAttention(payment: Pick<RegularPayment, "status" | "daysLate">) {
+  return payment.status === "late" || (payment.status === "part-paid" && payment.daysLate > GRACE_DAYS);
+}
 // A share counts as paid when it's within this much of the expected amount, in pence
 const SHARE_TOLERANCE = 100;
 

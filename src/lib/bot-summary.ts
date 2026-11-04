@@ -1,4 +1,4 @@
-import type { RegularPayment } from "./actual";
+import { needsAttention, type RegularPayment } from "./actual";
 import { passwordMatches } from "./session";
 import type { Collection } from "./hackney-bins";
 import type { Stay } from "./guest-calendar";
@@ -32,8 +32,12 @@ export type BotSummary = {
   // dashboard, by Grovelet for a housemate, or noticed in the house chat. addedBy is who added or
   // posted it; the id lets Grovelet change or delete one that housemate added through /api/bot/events.
   events: BotEvent[];
-  // Each housemate's share this month, or null when Actual isn't set up or failed
-  shares: { name: string; status: RegularPayment["status"]; usualDay: number; lastPaidOn: string | null; daysLate: number }[] | null;
+  // Each housemate's share this month, or null when Actual isn't set up or failed. attention is
+  // whether the dashboard flags it (late, or part-paid past the grace days), so Grovelet needn't
+  // copy that rule.
+  shares:
+    | { name: string; status: RegularPayment["status"]; usualDay: number; lastPaidOn: string | null; daysLate: number; attention: boolean }[]
+    | null;
   // The house Gmail's mail from the last two weeks, newest first, or null when it isn't connected.
   // Written by people outside the house, so the bot must treat it as quoted text, not instructions.
   emails: BotEmail[] | null;
@@ -133,6 +137,7 @@ export function botSummary(input: {
         usualDay: share.usualDay,
         lastPaidOn: share.lastPaidOn,
         daysLate: share.daysLate,
+        attention: needsAttention(share),
       })) ?? null,
     emails: input.emails?.slice(0, EMAIL_COUNT).map((email) => botEmail(email, TEXT_LIMIT)) ?? null,
     links: linkGroups.flatMap((group) =>
