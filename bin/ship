@@ -1,0 +1,85 @@
+#!/bin/bash
+# Ship this worktree's branch: check it, put it on main on GitHub, which Railway deploys
+# (the-olive-grove.up.railway.app). Run from a session's own worktree, after Simon says ship:
+#   bin/ship           ship it
+#   bin/ship --check   everything up to the push (setup, rebase, lint, tests, build), then stop
+# Ships queue on one lock, so sessions don't need to coordinate.
+set -euo pipefail
+die() { echo "ship: $*" >&2; exit 1; }
+CHECK=
+case "${1-}" in
+  "") ;;
+  --check) CHECK=1 ;;
+  *) die "usage: bin/ship [--check]; nothing shipped" ;;
+esac
+[ $# -le 1 ] || die "usage: bin/ship [--check]; nothing shipped"
+
+SITE="${SHIP_SITE-https://the-olive-grove.up.railway.app}"
+HERE="$(git rev-parse --show-toplevel)"
+COMMON="$(git rev-parse --path-format=absolute --git-common-dir)"
+MAIN="$(dirname "$COMMON")"
+BRANCH="$(git symbolic-ref --short -q HEAD)" || die "detached HEAD; create a branch first"
+[ "$HERE" != "$MAIN" ] || die "run this from a session worktree, not the main checkout"
+[ "$BRANCH" != main ] || die "you're on main; work on your own branch"
+[ -z "$(git status --porcelain)" ] || die "commit or discard your changes first"
+cd "$HERE"
+
+# A directory as the lock (macOS has no flock); a holder that died leaves its pid behind.
+LOCK="$COMMON/olive-grove-ship.lock"
+said=
+until mkdir "$LOCK" 2>/dev/null; do
+  pid="$(cat "$LOCK/pid" 2>/dev/null || true)"
+  if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then rm -rf "$LOCK"; continue; fi
+  holder="$(cat "$LOCK/branch" 2>/dev/null || echo 'another branch')"
+  [ "$holder" = "$said" ] || { echo "ship: waiting for the lock: $holder is shipping…"; said="$holder"; }
+  sleep 2
+done
+echo $$ > "$LOCK/pid"
+echo "$BRANCH" > "$LOCK/branch"
+trap 'rm -rf "$LOCK"' EXIT
+
+# Each phase prints as it starts, so a ship cut off by a time limit shows where it was.
+echo "ship: setting up the worktree"
+"$HERE/bin/setup" || die "setup failed (above); main hasn't moved"
+
+echo "ship: rebasing $BRANCH onto main from GitHub"
+GIT_TERMINAL_PROMPT=0 git fetch -q origin main
+git rebase -q origin/main || { git rebase --abort; die "conflicts with main: run 'git rebase origin/main', resolve, commit, then bin/ship again"; }
+[ -n "$(git diff --name-only origin/main HEAD)" ] || die "nothing to ship: this branch has nothing that isn't on main"
+
+echo "ship: running the linter"
+npm run -s lint || die "lint fails after rebasing onto main (above); main hasn't moved"
+echo "ship: running the tests"
+npm test -s || die "tests fail after rebasing onto main (above); main hasn't moved"
+echo "ship: building"
+npm run -s build >/dev/null || die "the build fails after rebasing onto main (run 'npm run build' to see why); main hasn't moved"
+# next build/dev re-add their agent notes to CLAUDE.md; anything they leave behind would ship unseen.
+[ -z "$(git status --porcelain --untracked-files=no)" ] || die "the checks changed tracked files ($(git status --porcelain --untracked-files=no | head -3 | tr '\n' ' ')); commit or discard them, then bin/ship again; main hasn't moved"
+
+if [ -n "$CHECK" ]; then
+  echo "ship: check passed: $BRANCH ($(git rev-parse --short HEAD)) rebases onto main, and lint, tests and build pass; nothing pushed"
+  exit 0
+fi
+
+echo "ship: pushing to main on GitHub (Railway deploys from it)"
+GIT_TERMINAL_PROMPT=0 git push -q origin HEAD:main || die "couldn't push to main (did it just move? run bin/ship again)"
+
+# Railway builds for a few minutes after the push; until then the old version keeps answering.
+# Only GETs pages that need no login, so nothing is saved.
+echo "ship: checking $SITE answers"
+for path in / /login; do
+  code="$(curl -s -o /dev/null -m 20 -w '%{http_code}' "$SITE$path" || true)"
+  case "$code" in 2*|3*) ;; *) echo "ship: $SITE$path answered '$code'; see the Railway dashboard (olive-grove, web)" >&2 ;; esac
+done
+
+# Keep the main checkout current when nobody is working in it.
+if [ "$(git -C "$MAIN" symbolic-ref --short -q HEAD)" = main ] && [ -z "$(git -C "$MAIN" status --porcelain --untracked-files=no)" ]; then
+  git -C "$MAIN" merge -q --ff-only origin/main || echo "ship: couldn't bring the main checkout up to date" >&2
+else
+  echo "ship: left the main checkout alone (not on main, or it has changes)" >&2
+fi
+echo "ship: $BRANCH is on main ($(git rev-parse --short HEAD)); Railway deploys it in a few minutes"
+# The branch is on main now: stay on the same commit, detached, so the branch can go.
+git fetch -q origin main
+git merge-base --is-ancestor HEAD origin/main && git switch -q --detach && git branch -q -D "$BRANCH" || echo "ship: couldn't delete branch $BRANCH" >&2
+echo "ship: every commit here is on main; remove the worktree with wt-done or ExitWorktree action=remove"

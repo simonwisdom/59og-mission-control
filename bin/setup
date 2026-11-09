@@ -1,0 +1,29 @@
+#!/bin/bash
+# Get a worktree ready to work in: link .env and AGENTS.md from the main checkout (both are
+# gitignored, so a fresh worktree has neither), install packages, and generate Next's types so
+# tsc works. Safe to run again; it only does what's missing. bin/ship runs it first.
+set -euo pipefail
+HERE="$(git rev-parse --show-toplevel)"
+MAIN="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+cd "$HERE"
+
+if [ "$HERE" != "$MAIN" ]; then
+  for f in .env AGENTS.md; do
+    # -L too: a link whose target went missing still counts as there, so it isn't replaced.
+    if [ ! -e "$f" ] && [ ! -L "$f" ] && [ -e "$MAIN/$f" ]; then
+      ln -s "$MAIN/$f" "$f"
+      echo "setup: linked $f from the main checkout"
+    fi
+  done
+fi
+
+# A symlinked node_modules crashes Turbopack, so each worktree gets its own.
+if [ -L node_modules ]; then
+  echo "setup: node_modules is a symlink, which crashes Turbopack; remove it and run bin/setup again" >&2
+  exit 1
+fi
+if [ ! -d node_modules ] || [ package-lock.json -nt node_modules/.package-lock.json ]; then
+  echo "setup: installing packages (npm ci)"
+  npm ci --no-audit --no-fund --loglevel=error
+  npx --no-install next typegen >/dev/null
+fi

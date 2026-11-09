@@ -13,18 +13,15 @@ Simon is a visual thinker. For any change to what the site looks like:
 
 ## Worktrees
 
-`.env` and `AGENTS.md` are gitignored, so a fresh worktree doesn't have them. Claude Code copies them in automatically via `.worktreeinclude`. In a worktree made any other way (Codex, `git worktree add`), symlink them from the main checkout: `ln -s ../../../.env .env`. Run `npm ci` in each worktree; a symlinked `node_modules` crashes Turbopack. Then run `npx next typegen` before `tsc`: a fresh worktree has no generated Next types, so `tsc` fails on `RouteContext`, `LayoutProps` and image imports until it has run. Use a free port, e.g. `npm run dev -- -p 3001`.
+`.env` and `AGENTS.md` are gitignored, so a fresh worktree doesn't have them. Run `bin/setup` first in any new worktree: it links both from the main checkout when they're missing, runs `npm ci` (each worktree needs its own `node_modules`; a symlinked one crashes Turbopack) and `npx next typegen` (without it `tsc` fails on `RouteContext`, `LayoutProps` and image imports). It only does what's missing, and `bin/ship` runs it too. Use a free port, e.g. `npm run dev -- -p 3001`.
 
 ## Finishing a task
 
-When a task is done, ship it and clean up without asking (except a look-and-feel choice that needs Simon's feedback first, see Showing changes); Simon doesn't want to do these steps by hand. Pushing to main is the ship step: Railway deploys from it.
+When a task is done, ship it and clean up without asking (except a look-and-feel choice that needs Simon's feedback first, see Showing changes); Simon doesn't want to do these steps by hand. Pushing to main is the ship step: Railway deploys from it, and `bin/ship` does it.
 
-1. Run `npm run lint`, `npm test` and `npm run build`; all must pass. If one fails, stop and report instead of shipping.
-2. Commit in the worktree, then `git fetch origin` and `git rebase origin/main`. If the rebase brought in new commits, run the checks again.
-3. `git push origin HEAD:main`.
-4. Leave and remove the worktree (Claude Code: ExitWorktree with `remove`; it asks to discard the commit because local `main` hasn't seen it yet, which is safe once it's on `origin/main`).
-5. In the main checkout, `git pull --ff-only`. If that refuses, say why; don't force it.
-6. Close out in a few lines: what changed, the commit hash, what was checked, and anything not checked (such as the live site). For a visible change, include the before/after picture.
+1. Commit in the worktree, then run plain `bin/ship` from the worktree (nothing before it: no `cd … &&`, no `VAR=…`). It queues behind any other ship, rebases onto `origin/main`, runs lint, tests and build, pushes to main, checks the live site answers, brings the main checkout up to date when it's clean, and deletes the branch. `bin/ship --check` does everything except the push. If it fails, it says what to do and whether main moved; fix that or stop and report.
+2. Leave and remove the worktree: `wt-done <worktree path>`, or ExitWorktree with `remove`.
+3. Close out in a few lines: what changed, the commit hash, what was checked, and anything not checked (Railway takes a few minutes to deploy, so the live site may still show the old version). For a visible change, include the before/after picture.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
