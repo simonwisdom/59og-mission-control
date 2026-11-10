@@ -17,6 +17,7 @@ const application = (id: number, createdAt: string, extra: Partial<Application> 
   anythingElse: null,
   agreedToRules: true,
   addedBy: null,
+  room: null,
   ...extra,
 });
 

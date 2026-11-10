@@ -12,3 +12,9 @@ export async function housemates() {
   ]);
   return knownPeople([...tripPeople, ...stayPeople, ...eventPeople].map((p) => p.person ?? ""));
 }
+
+// Rooms guests have stayed in before, for the stay form's suggestions, so each is spelt the same way
+export async function stayRooms() {
+  const rows = await db.selectDistinct({ room: applications.room }).from(applications).where(isNotNull(applications.room));
+  return knownPeople(rows.map((r) => r.room ?? ""));
+}

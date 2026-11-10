@@ -1,7 +1,7 @@
 // Used by scripts/preview.sh: screenshot URL in the installed Google Chrome
 // with a valid house_session cookie. Usage: preview-shot.mjs URL OUT_PNG WIDTH [SELECTOR]
 // With SELECTOR, only the first matching element is captured. OPEN_DETAILS=1 opens every folded
-// section (<details>) first, e.g. History on the Memory page.
+// section (<details>) first, e.g. History on the Memory page. PREVIEW_SCHEME=dark shows the dark theme.
 import { chromium } from "playwright-core";
 import { createSessionToken } from "../src/lib/session.ts";
 
@@ -10,7 +10,10 @@ const token = createSessionToken(process.env.SESSION_SECRET, Date.now() + 60 * 6
 
 const browser = await chromium.launch({ channel: "chrome" });
 try {
-  const context = await browser.newContext({ viewport: { width: Number(width), height: 900 } });
+  const context = await browser.newContext({
+    viewport: { width: Number(width), height: 900 },
+    colorScheme: process.env.PREVIEW_SCHEME === "dark" ? "dark" : "light",
+  });
   await context.addCookies([{ name: "house_session", value: token, url }]);
   const page = await context.newPage();
   const response = await page.goto(url, { waitUntil: "networkidle", timeout: 120_000 });

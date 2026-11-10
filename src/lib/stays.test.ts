@@ -1,18 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { parseStay, stayRow } from "./stays";
+import { botMayChangeStay, parseStay, stayRow } from "./stays";
 
 describe("parseStay", () => {
   it("accepts a stay and reads the party size from a form's text", () => {
     expect(parseStay({ addedBy: " Rita ", name: " Sam Okafor ", partySize: "2", arrivalDate: "2026-11-07", departureDate: "2026-11-09" })).toEqual({
       success: true,
-      data: { addedBy: "Rita", name: "Sam Okafor", partySize: 2, arrivalDate: "2026-11-07", departureDate: "2026-11-09" },
+      data: { addedBy: "Rita", name: "Sam Okafor", partySize: 2, arrivalDate: "2026-11-07", departureDate: "2026-11-09", room: null },
       confirmed: true,
     });
   });
 
   it("reads confirmed apart from the stay, true unless it's false, and only as true or false", () => {
     const stay = { addedBy: "Rita", name: "Sam", partySize: 1, arrivalDate: "2026-11-07", departureDate: "2026-11-09" };
-    const data = { addedBy: "Rita", name: "Sam", partySize: 1, arrivalDate: "2026-11-07", departureDate: "2026-11-09" };
+    const data = { addedBy: "Rita", name: "Sam", partySize: 1, arrivalDate: "2026-11-07", departureDate: "2026-11-09", room: null };
     expect(parseStay({ ...stay, confirmed: false })).toEqual({ success: true, data, confirmed: false });
     expect(parseStay({ ...stay, confirmed: true })).toEqual({ success: true, data, confirmed: true });
     expect(parseStay(stay)).toEqual({ success: true, data, confirmed: true });
@@ -46,16 +46,54 @@ describe("parseStay", () => {
       errors: { departureDate: "That's over a year away; check the year" },
     });
   });
+
+  it("keeps the room trimmed, takes blank or null as not said, and turns away a long one", () => {
+    const stay = { addedBy: "Rita", name: "Sam", partySize: 1, arrivalDate: "2026-11-07", departureDate: "2026-11-09" };
+    const roomOf = (room: unknown) => {
+      const parsed = parseStay({ ...stay, room });
+      return parsed.success ? parsed.data.room : parsed.errors;
+    };
+    expect(roomOf(" White Room ")).toBe("White Room");
+    expect(roomOf("")).toBeNull();
+    expect(roomOf("  ")).toBeNull();
+    expect(roomOf(null)).toBeNull();
+    expect(roomOf(undefined)).toBeNull();
+    expect(roomOf("x".repeat(40))).toBe("x".repeat(40));
+    expect(roomOf("x".repeat(41))).toEqual({ room: "Keep the room under 40 characters" });
+    expect(roomOf(3)).toEqual({ room: "Say the room as text" });
+  });
+});
+
+describe("botMayChangeStay", () => {
+  const stay = { addedBy: "Simon" };
+
+  it("lets the housemate whose guest it is change anything", () => {
+    expect(botMayChangeStay(stay, " simon ", { arrivalDate: "2026-11-08", addedBy: "Alex", room: "White Room" })).toBe(true);
+  });
+
+  it("lets anyone else change only whose guest it is and the room", () => {
+    expect(botMayChangeStay(stay, "Adam", { person: "Adam", addedBy: "Alex" })).toBe(true);
+    expect(botMayChangeStay(stay, "Adam", { person: "Adam", room: null })).toBe(true);
+    for (const field of ["name", "partySize", "arrivalDate", "departureDate"]) {
+      expect(botMayChangeStay(stay, "Adam", { person: "Adam", addedBy: "Alex", [field]: "x" })).toBe(false);
+    }
+  });
+
+  it("changes nothing without a person, and nothing on an application", () => {
+    expect(botMayChangeStay(stay, "", { room: "White Room" })).toBe(false);
+    expect(botMayChangeStay({ addedBy: null }, "Simon", { room: "White Room" })).toBe(false);
+  });
 });
 
 describe("stayRow", () => {
   it("saves a housemate's stay as confirmed, with no application text", () => {
-    expect(stayRow({ addedBy: "Rita", name: "Sam", partySize: 1, arrivalDate: "2026-11-07", departureDate: "2026-11-09" })).toEqual({
+    expect(stayRow({ addedBy: "Rita", name: "Sam", partySize: 1, arrivalDate: "2026-11-07", departureDate: "2026-11-09", room: null })).toEqual({
       addedBy: "Rita",
       name: "Sam",
       partySize: 1,
       arrivalDate: "2026-11-07",
       departureDate: "2026-11-09",
+      room: null,
       status: "approved",
       agreedToRules: false,
       email: null,
@@ -64,7 +102,7 @@ describe("stayRow", () => {
   });
 
   it("saves one not confirmed yet as pending, otherwise the same", () => {
-    const stay = { addedBy: "Rita", name: "Sam", partySize: 1, arrivalDate: "2026-11-07", departureDate: "2026-11-09" };
+    const stay = { addedBy: "Rita", name: "Sam", partySize: 1, arrivalDate: "2026-11-07", departureDate: "2026-11-09", room: null };
     expect(stayRow(stay, false)).toEqual({ ...stayRow(stay), status: "pending" });
     expect(stayRow(stay, true).status).toBe("approved");
   });

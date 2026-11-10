@@ -15,7 +15,7 @@ export type AddKind = (typeof KINDS)[number]["key"];
 
 // One place to add anything to the calendar: a switch between a trip, a guest and an event, with
 // only that form showing. `me` fills in who's adding it.
-export function AddPanel({ me, people, initial = "trip" }: { me: string; people: string[]; initial?: AddKind }) {
+export function AddPanel({ me, people, rooms, initial = "trip" }: { me: string; people: string[]; rooms: string[]; initial?: AddKind }) {
   const [kind, setKind] = useState<AddKind>(initial);
   const current = KINDS.find((k) => k.key === kind)!;
 
@@ -31,7 +31,7 @@ export function AddPanel({ me, people, initial = "trip" }: { me: string; people:
       </div>
       <p className="mt-3 mb-4 text-sm text-muted">{current.hint}</p>
       {kind === "trip" && <TripForm defaults={{ person: me }} people={people} />}
-      {kind === "guest" && <StayForm defaults={{ addedBy: me }} people={people} />}
+      {kind === "guest" && <StayForm defaults={{ addedBy: me }} people={people} rooms={rooms} />}
       {kind === "event" && <EventForm defaults={{ addedBy: me }} people={people} />}
       <p className="mt-4 text-xs text-muted">Grovelet can add any of these too, if you ask it in a chat.</p>
     </section>

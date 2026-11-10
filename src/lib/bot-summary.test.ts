@@ -31,22 +31,38 @@ const share: RegularPayment = {
 };
 
 describe("botSummary", () => {
-  const base = { today: "2026-10-18", bins: [], pendingApplications: 0, stays: [], trips: [], events: [], shares: null, emails: null };
+  const base = { today: "2026-10-18", bins: [], pendingApplications: 0, stays: [], pastStays: [], trips: [], events: [], shares: null, emails: null };
 
-  it("gives guests' first names only and marks which stays are confirmed", () => {
+  it("gives guests' first names only, marks which stays are confirmed and says the room", () => {
     const summary = botSummary({
       ...base,
       stays: [
-        { id: 1, name: "Ana María López", partySize: 2, arrivalDate: "2026-10-20", departureDate: "2026-10-22", status: "approved", addedBy: null },
-        { id: 2, name: " Joe ", partySize: 1, arrivalDate: "2026-10-25", departureDate: "2026-10-26", status: "pending", addedBy: null },
-        { id: 3, name: "Declined Guest", partySize: 1, arrivalDate: "2026-10-25", departureDate: "2026-10-26", status: "declined", addedBy: null },
-        { id: 4, name: "Sam Okafor", partySize: 1, arrivalDate: "2026-10-27", departureDate: "2026-10-28", status: "approved", addedBy: "Rita" },
+        { id: 1, name: "Ana María López", partySize: 2, arrivalDate: "2026-10-20", departureDate: "2026-10-22", status: "approved", addedBy: null, room: null },
+        { id: 2, name: " Joe ", partySize: 1, arrivalDate: "2026-10-25", departureDate: "2026-10-26", status: "pending", addedBy: null, room: null },
+        { id: 3, name: "Declined Guest", partySize: 1, arrivalDate: "2026-10-25", departureDate: "2026-10-26", status: "declined", addedBy: null, room: null },
+        { id: 4, name: "Sam Okafor", partySize: 1, arrivalDate: "2026-10-27", departureDate: "2026-10-28", status: "approved", addedBy: "Rita", room: "White Room" },
       ],
     });
     expect(summary.stays).toEqual([
-      { id: 1, firstName: "Ana", partySize: 2, arrivalDate: "2026-10-20", departureDate: "2026-10-22", confirmed: true, addedBy: null },
-      { id: 2, firstName: "Joe", partySize: 1, arrivalDate: "2026-10-25", departureDate: "2026-10-26", confirmed: false, addedBy: null },
-      { id: 4, firstName: "Sam", partySize: 1, arrivalDate: "2026-10-27", departureDate: "2026-10-28", confirmed: true, addedBy: "Rita" },
+      { id: 1, firstName: "Ana", partySize: 2, arrivalDate: "2026-10-20", departureDate: "2026-10-22", confirmed: true, addedBy: null, room: null },
+      { id: 2, firstName: "Joe", partySize: 1, arrivalDate: "2026-10-25", departureDate: "2026-10-26", confirmed: false, addedBy: null, room: null },
+      { id: 4, firstName: "Sam", partySize: 1, arrivalDate: "2026-10-27", departureDate: "2026-10-28", confirmed: true, addedBy: "Rita", room: "White Room" },
+    ]);
+    expect(summary.pastStays).toEqual([]);
+  });
+
+  it("gives past stays in the same shape and the caller's order, without declined ones", () => {
+    const summary = botSummary({
+      ...base,
+      pastStays: [
+        { id: 7, name: "Karl Berg", partySize: 1, arrivalDate: "2026-10-01", departureDate: "2026-10-12", status: "approved", addedBy: "Alex", room: "Space Temple" },
+        { id: 8, name: "Nope", partySize: 1, arrivalDate: "2026-10-02", departureDate: "2026-10-05", status: "declined", addedBy: null, room: null },
+        { id: 6, name: "Lu", partySize: 2, arrivalDate: "2026-09-01", departureDate: "2026-09-03", status: "approved", addedBy: null, room: null },
+      ],
+    });
+    expect(summary.pastStays).toEqual([
+      { id: 7, firstName: "Karl", partySize: 1, arrivalDate: "2026-10-01", departureDate: "2026-10-12", confirmed: true, addedBy: "Alex", room: "Space Temple" },
+      { id: 6, firstName: "Lu", partySize: 2, arrivalDate: "2026-09-01", departureDate: "2026-09-03", confirmed: true, addedBy: null, room: null },
     ]);
   });
 

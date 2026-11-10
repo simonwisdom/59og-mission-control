@@ -230,7 +230,7 @@ try {
   });
 
   await check("a housemate's guest can be added, changed and deleted on the calendar", async () => {
-    const stays = () => sql`select party_size, status, email from applications where added_by = ${TEST_PERSON}`;
+    const stays = () => sql`select party_size, status, email, room from applications where added_by = ${TEST_PERSON}`;
     await page.goto(`${base}/dashboard/calendar`, { waitUntil: "networkidle" });
     const arrive = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
     const depart = new Date(Date.now() + 5 * 86_400_000).toISOString().slice(0, 10);
@@ -240,12 +240,16 @@ try {
     await page.getByLabel("Arriving").fill(arrive);
     await page.getByLabel("Departing").fill(depart);
     await page.getByLabel("Whose guest").fill(TEST_PERSON);
+    await page.getByLabel("Room (optional)").fill("E2E Room");
     await page.getByRole("button", { name: "Add stay" }).click();
-    // its line in Coming up
+    // its line in Coming up, with the room
+    await page.getByRole("link", { name: new RegExp(`${TEST_GUEST}.*${TEST_PERSON}'s guest, E2E Room`) }).waitFor({ timeout: 30_000 });
     const listed = page.getByRole("link", { name: new RegExp(`${TEST_GUEST}.*${TEST_PERSON}'s guest`) });
-    await listed.waitFor({ timeout: 30_000 });
     const [added] = await stays();
-    expect(added && added.status === "approved" && added.party_size === 2 && added.email === null, `saved as ${JSON.stringify(added)}`);
+    expect(
+      added && added.status === "approved" && added.party_size === 2 && added.email === null && added.room === "E2E Room",
+      `saved as ${JSON.stringify(added)}`,
+    );
 
     await page.goto(`${base}/dashboard/applications`, { waitUntil: "networkidle" });
     expect((await page.getByText(TEST_GUEST).count()) === 0, "the stay shows on the applications list");
@@ -254,10 +258,12 @@ try {
     await listed.click();
     await page.waitForURL(/\/dashboard\/calendar\/stays\/\d+$/);
     await page.getByLabel("People").fill("1");
+    // a blank room clears it
+    await page.getByLabel("Room (optional)").fill("");
     await page.getByRole("button", { name: "Save changes" }).click();
     await page.waitForURL(/\/dashboard\/calendar\?month=/);
     const [changed] = await stays();
-    expect(changed && changed.party_size === 1, `saved as ${JSON.stringify(changed)}`);
+    expect(changed && changed.party_size === 1 && changed.room === null, `saved as ${JSON.stringify(changed)}`);
 
     await listed.click();
     await page.getByRole("button", { name: "Delete stay" }).click();

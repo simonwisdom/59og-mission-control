@@ -2,7 +2,7 @@ import { needsAttention, type RegularPayment } from "./actual";
 import { passwordMatches } from "./session";
 import type { Collection } from "./hackney-bins";
 import type { Stay } from "./guest-calendar";
-import type { Email, HouseEvent, Trip } from "@/db/schema";
+import type { Application, Email, HouseEvent, Trip } from "@/db/schema";
 import { linkGroups } from "./useful-links";
 
 export type EmailRow = Pick<Email, "fromName" | "fromAddress" | "to" | "subject" | "sentAt" | "body" | "attachments" | "labels">;
@@ -25,6 +25,9 @@ export type BotSummary = {
   // addedBy (the housemate whose own guest it is, or null for an application) let Grovelet change or
   // delete a housemate's stay through /api/bot/stays.
   stays: BotStay[];
+  // Stays that ended in the last PAST_STAY_DAYS (departure before today), newest first, for "how long
+  // did Karl stay?" after he's gone
+  pastStays: BotStay[];
   // Housemates' trips not over yet that start within the next TRIP_DAYS, soonest first. The id lets
   // Grovelet change or delete one through /api/bot/trips.
   trips: BotTrip[];
@@ -56,7 +59,11 @@ export type BotStay = {
   departureDate: string;
   confirmed: boolean;
   addedBy: string | null;
+  // Which room the guest sleeps in, e.g. "White Room", or null when not said
+  room: string | null;
 };
+
+type StayRow = Stay & Pick<Application, "room">;
 
 export type BotTrip = Pick<Trip, "id" | "person" | "leaveDate" | "backDate" | "place">;
 
@@ -81,6 +88,8 @@ export const EMAIL_DAYS = 14;
 export const TRIP_DAYS = 90;
 // Events from this many days back, so "how was the party?" still has it, up to TRIP_DAYS ahead
 export const EVENT_DAYS_BACK = 7;
+// Stays that ended up to this many days ago
+export const PAST_STAY_DAYS = 60;
 const EMAIL_COUNT = 15;
 const TEXT_LIMIT = 2000;
 
@@ -98,6 +107,22 @@ export function botEmail(email: EmailRow, textLimit: number): BotEmail {
   };
 }
 
+// Declined stays never go in; the order is the caller's
+function botStays(stays: StayRow[]): BotStay[] {
+  return stays
+    .filter((stay) => stay.status !== "declined")
+    .map((stay) => ({
+      id: stay.id,
+      firstName: stay.name.trim().split(/\s+/)[0],
+      partySize: stay.partySize,
+      arrivalDate: stay.arrivalDate,
+      departureDate: stay.departureDate,
+      confirmed: stay.status === "approved",
+      addedBy: stay.addedBy,
+      room: stay.room,
+    }));
+}
+
 export function botTokenMatches(header: string | null, token: string | undefined) {
   if (!token || !header?.startsWith("Bearer ")) return false;
   return passwordMatches(header.slice("Bearer ".length), token);
@@ -107,7 +132,8 @@ export function botSummary(input: {
   today: string;
   bins: Collection[];
   pendingApplications: number;
-  stays: Stay[];
+  stays: StayRow[];
+  pastStays: StayRow[];
   trips: BotTrip[];
   events: BotEvent[];
   shares: RegularPayment[] | null;
@@ -117,17 +143,8 @@ export function botSummary(input: {
     today: input.today,
     bins: input.bins.slice(0, 2),
     pendingApplications: input.pendingApplications,
-    stays: input.stays
-      .filter((stay) => stay.status !== "declined")
-      .map((stay) => ({
-        id: stay.id,
-        firstName: stay.name.trim().split(/\s+/)[0],
-        partySize: stay.partySize,
-        arrivalDate: stay.arrivalDate,
-        departureDate: stay.departureDate,
-        confirmed: stay.status === "approved",
-        addedBy: stay.addedBy,
-      })),
+    stays: botStays(input.stays),
+    pastStays: botStays(input.pastStays),
     trips: input.trips.map(({ id, person, leaveDate, backDate, place }) => ({ id, person, leaveDate, backDate, place })),
     events: input.events.map(({ id, title, date, endDate, time, place, link, addedBy }) => ({ id, title, date, endDate, time, place, link, addedBy })),
     shares:

@@ -1,19 +1,22 @@
 "use client";
 
 import { useActionState } from "react";
-import type { StayInput } from "@/lib/stays";
+import { ROOM_MAX, type StayInput } from "@/lib/stays";
 import { saveStay } from "./actions";
 
 // Add a housemate's own guest, or change one when `stay` is given. `people` are housemates' names
-// from earlier trips and stays, offered as suggestions so each is spelt the same way each time.
+// from earlier trips and stays, and `rooms` the rooms guests have stayed in, offered as suggestions
+// so each is spelt the same way each time.
 export function StayForm({
   stay,
   defaults,
   people,
+  rooms,
 }: {
   stay?: StayInput & { id: number };
   defaults?: Partial<StayInput>;
   people: string[];
+  rooms: string[];
 }) {
   const [state, action, pending] = useActionState(saveStay.bind(null, stay?.id ?? null), undefined);
   const errors = state?.errors ?? {};
@@ -41,7 +44,7 @@ export function StayForm({
         <input type="date" name="departureDate" required defaultValue={values.departureDate ?? ""} className="input" />
         {errors.departureDate && <p className="error">{errors.departureDate}</p>}
       </label>
-      <label className="sm:col-span-2">
+      <label>
         <span className="label">Whose guest</span>
         <input name="addedBy" required maxLength={40} list="stay-people" placeholder="Your first name" defaultValue={values.addedBy ?? ""} className="input" />
         <datalist id="stay-people">
@@ -50,6 +53,16 @@ export function StayForm({
           ))}
         </datalist>
         {errors.addedBy && <p className="error">{errors.addedBy}</p>}
+      </label>
+      <label>
+        <span className="label">Room (optional)</span>
+        <input name="room" maxLength={ROOM_MAX} list="stay-rooms" placeholder="e.g. White Room" defaultValue={values.room ?? ""} className="input" />
+        <datalist id="stay-rooms">
+          {rooms.map((room) => (
+            <option key={room} value={room} />
+          ))}
+        </datalist>
+        {errors.room && <p className="error">{errors.room}</p>}
       </label>
       <div>
         <button type="submit" disabled={pending} className="btn-primary">

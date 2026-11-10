@@ -43,6 +43,8 @@ export const applications = pgTable("applications", {
   // through Grovelet; null for an application from the apply form. These stays are approved from
   // the start and stay off the applications list.
   addedBy: text("added_by"),
+  // Which room the guest sleeps in, e.g. "White Room", as the housemates call it; null when not said
+  room: text("room"),
 });
 
 export const notes = pgTable("notes", {

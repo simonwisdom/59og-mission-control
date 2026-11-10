@@ -13,7 +13,7 @@ import { REVIEWER_COOKIE } from "@/lib/review";
 import { Crumbs } from "../crumbs";
 import { AddPanel } from "./add-panel";
 import { CopyLink } from "./copy-link";
-import { housemates } from "./people";
+import { housemates, stayRooms } from "./people";
 import { StayLegend, StayWeeks, Swatch, type SwatchKind } from "./stay-weeks";
 
 export const metadata: Metadata = { title: "Calendar" };
@@ -56,6 +56,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           departureDate: applications.departureDate,
           status: applications.status,
           addedBy: applications.addedBy,
+          room: applications.room,
         })
         .from(applications)
         .where(and(ne(applications.status, "declined"), lte(applications.arrivalDate, to), gte(applications.departureDate, from)))
@@ -68,10 +69,11 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
         .orderBy(asc(events.date)),
     ]);
 
-  const [[stays, monthTrips, monthEvents], [comingStays, comingTrips, comingEvents], people] = await Promise.all([
+  const [[stays, monthTrips, monthEvents], [comingStays, comingTrips, comingEvents], people, rooms] = await Promise.all([
     between(firstDay, lastDay),
     between(today, horizon),
     housemates(),
+    stayRooms(),
   ]);
   // Fill in who's adding something: the name they last signed a note with, or their login link's
   // first word. A link can be named "the house", so the note name comes first.
@@ -84,7 +86,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       start: stay.arrivalDate,
       end: stay.departureDate,
       title: stay.partySize > 1 ? `${stay.name} (${formatPartySize(stay.partySize)})` : stay.name,
-      detail: [stay.addedBy ? `${stay.addedBy}'s guest` : "Applied to stay", stay.status === "approved" ? "" : "not confirmed yet"]
+      detail: [stay.addedBy ? `${stay.addedBy}'s guest` : "Applied to stay", stay.room, stay.status === "approved" ? "" : "not confirmed yet"]
         .filter(Boolean)
         .join(", "),
       href: stayPath(stay),
@@ -161,7 +163,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       {/* Coming up beside Add on a wide screen, one under the other on a phone */}
       <div className="mt-6 grid items-start gap-6 lg:grid-cols-2">
         <ComingUp items={upcoming} today={today} />
-        <AddPanel me={me} people={people} />
+        <AddPanel me={me} people={people} rooms={rooms} />
       </div>
 
       <details className="group card mt-6 border-2 border-ink/80 py-3 text-sm">

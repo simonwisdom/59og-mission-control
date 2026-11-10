@@ -7,7 +7,7 @@ import { requireSession } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { Crumbs } from "../../../crumbs";
 import { StayForm } from "../../stay-form";
-import { housemates } from "../../people";
+import { housemates, stayRooms } from "../../people";
 import { DeleteStayButton } from "./delete-stay-button";
 
 export const metadata: Metadata = { title: "Guest stay" };
@@ -17,7 +17,7 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
 
-  const [[stay], people] = await Promise.all([db.select().from(applications).where(eq(applications.id, id)), housemates()]);
+  const [[stay], people, rooms] = await Promise.all([db.select().from(applications).where(eq(applications.id, id)), housemates(), stayRooms()]);
   if (!stay) notFound();
   // An application has its own page
   if (!stay.addedBy) redirect(`/dashboard/applications/${stay.id}`);
@@ -30,7 +30,7 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
         {stay.addedBy}&apos;s guest, added {formatDate(stay.createdAt)}
       </p>
       <section className="card mt-5">
-        <StayForm stay={{ ...stay, addedBy: stay.addedBy }} people={people} />
+        <StayForm stay={{ ...stay, addedBy: stay.addedBy }} people={people} rooms={rooms} />
       </section>
       <div className="mt-4">
         <DeleteStayButton stayId={stay.id} />

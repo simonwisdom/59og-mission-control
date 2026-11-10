@@ -4,7 +4,8 @@ import { botTokenMatches } from "@/lib/bot-summary";
 import { parseStay, stayRow } from "@/lib/stays";
 
 // Grovelet adds a housemate's own guest here after they've said yes in a chat. Same key as the
-// summary feed. Body: {"person", "name", "partySize", "arrivalDate", "departureDate", "confirmed"?}.
+// summary feed. Body: {"person", "name", "partySize", "arrivalDate", "departureDate", "room"?,
+// "confirmed"?}; room is which room the guest sleeps in, 40 characters at most, or null.
 // Grovelet sends the name of the housemate it's chatting with as person, never a name from the
 // message, and the stay is saved as theirs (addedBy), confirmed. With "confirmed": false it's saved
 // pending instead, while the guest chat votes on it, and Grovelet confirms it later through

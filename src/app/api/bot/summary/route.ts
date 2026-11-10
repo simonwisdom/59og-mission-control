@@ -1,8 +1,8 @@
-import { and, asc, count, eq, gte, isNull, lte, ne, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, isNull, lt, lte, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { applications, events, trips } from "@/db/schema";
 import { getHouseFinances } from "@/lib/actual";
-import { EMAIL_DAYS, EVENT_DAYS_BACK, TRIP_DAYS, botSummary, botTokenMatches } from "@/lib/bot-summary";
+import { EMAIL_DAYS, EVENT_DAYS_BACK, PAST_STAY_DAYS, TRIP_DAYS, botSummary, botTokenMatches } from "@/lib/bot-summary";
 import { getBinCollections } from "@/lib/hackney-bins";
 import { getMailbox, recentEmails, syncHouseMailWithin } from "@/lib/house-mail";
 
@@ -22,19 +22,21 @@ export async function GET(request: Request) {
   const today = londonToday();
   const daysAhead = (days: number) => new Date(Date.parse(`${today}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
   const until = daysAhead(STAY_DAYS);
-  const [[{ pending }], stays, housemateTrips, houseEvents, bins, money, mail] = await Promise.all([
+  const stayColumns = {
+    id: applications.id,
+    name: applications.name,
+    partySize: applications.partySize,
+    arrivalDate: applications.arrivalDate,
+    departureDate: applications.departureDate,
+    status: applications.status,
+    addedBy: applications.addedBy,
+    room: applications.room,
+  };
+  const [[{ pending }], stays, pastStays, housemateTrips, houseEvents, bins, money, mail] = await Promise.all([
     // A housemate's stay waiting on the guest chat's vote is pending too, but it isn't an application
     db.select({ pending: count() }).from(applications).where(and(eq(applications.status, "pending"), isNull(applications.addedBy))),
     db
-      .select({
-        id: applications.id,
-        name: applications.name,
-        partySize: applications.partySize,
-        arrivalDate: applications.arrivalDate,
-        departureDate: applications.departureDate,
-        status: applications.status,
-        addedBy: applications.addedBy,
-      })
+      .select(stayColumns)
       .from(applications)
       .where(
         and(
@@ -44,6 +46,17 @@ export async function GET(request: Request) {
         ),
       )
       .orderBy(asc(applications.arrivalDate)),
+    db
+      .select(stayColumns)
+      .from(applications)
+      .where(
+        and(
+          ne(applications.status, "declined"),
+          lt(applications.departureDate, today),
+          gte(applications.departureDate, daysAhead(-PAST_STAY_DAYS)),
+        ),
+      )
+      .orderBy(desc(applications.departureDate), desc(applications.arrivalDate)),
     db
       .select()
       .from(trips)
@@ -64,6 +77,7 @@ export async function GET(request: Request) {
     bins: bins.status === "ok" ? bins.collections : [],
     pendingApplications: pending,
     stays,
+    pastStays,
     trips: housemateTrips,
     events: houseEvents,
     shares: money.status === "ok" ? money.shares : null,
